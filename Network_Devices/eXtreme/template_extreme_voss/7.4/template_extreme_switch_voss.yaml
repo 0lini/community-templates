@@ -1,0 +1,2954 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 36bff6c29af64692839d077febfc7079
+      name: 'Templates/Network devices'
+  templates:
+    - uuid: 36b09332e8a1482ca20153784742aac5
+      template: 'Extreme VOSS by SNMP'
+      name: 'Extreme VOSS by SNMP'
+      description: |
+        Template Extreme VOSS by SNMP
+
+        Monitoring of Extreme Networks VOSS / Fabric Engine switches via SNMPv2c or SNMPv3.
+
+        MIBs used:
+        RAPID-CITY
+        ENTITY-MIB
+        IF-MIB
+        IEEE8021-PAE-MIB
+        SNMPv2-MIB
+
+        Collection uses master SNMP walk[] / get[] items with dependent discovery and metrics (Zabbix 7.4+).
+
+        Note: Legacy rcSysCpuUtil / rcSysDram* are not supported on VOSS. CPU and memory use RAPID-CITY::rcKhiSlotPerfTable.
+
+        OID reference: VOSS 9.4.1 MIBs.
+
+        Author: Jon McLaughlin
+      groups:
+        - name: 'Templates/Network devices'
+      items:
+        - uuid: 3d3f99531f5c4b7bba80b3bb3af2da7a
+          name: 'Extreme VOSS: ICMP ping'
+          type: SIMPLE
+          key: icmpping
+          history: 1w
+          trends: '0'
+          description: 'The host ICMP availability. Primary availability check.'
+          valuemap:
+            name: 'Service state'
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: 31613162065a41e5b7dc8bfcba59e71a
+              expression: 'max(/Extreme VOSS by SNMP/icmpping,#3)=0'
+              name: 'Extreme VOSS: Unavailable by ICMP ping'
+              priority: HIGH
+              description: 'Last three attempts returned timeout. Please check device connectivity.'
+              tags:
+                - tag: scope
+                  value: availability
+        - uuid: 0dde99b52f034319b00127c63e469df1
+          name: 'Extreme VOSS: ICMP loss'
+          type: SIMPLE
+          key: icmppingloss
+          history: 1w
+          value_type: FLOAT
+          units: '%'
+          description: 'The ICMP packet loss in percent.'
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: 4e85fce1b35640329d5c6721fd953d99
+              expression: 'min(/Extreme VOSS by SNMP/icmppingloss,5m)>{$ICMP.LOSS.WARN} and min(/Extreme VOSS by SNMP/icmppingloss,5m)<100'
+              name: 'Extreme VOSS: High ICMP ping loss'
+              event_name: 'Extreme VOSS: High ICMP ping loss (>{$ICMP.LOSS.WARN}%)'
+              opdata: 'Loss: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'ICMP packet loss over 5 minutes exceeds {$ICMP.LOSS.WARN}%.'
+              dependencies:
+                - name: 'Extreme VOSS: Unavailable by ICMP ping'
+                  expression: 'max(/Extreme VOSS by SNMP/icmpping,#3)=0'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: scope
+                  value: performance
+        - uuid: e6ee615d5f354406bc9154f44585ee39
+          name: 'Extreme VOSS: ICMP response time'
+          type: SIMPLE
+          key: icmppingsec
+          history: 1w
+          value_type: FLOAT
+          units: s
+          description: 'The ICMP echo response time.'
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: 77636fd6f18d49a3a8e503b455ac41a8
+              expression: 'avg(/Extreme VOSS by SNMP/icmppingsec,5m)>{$ICMP.RESPONSE.TIME.WARN}'
+              name: 'Extreme VOSS: High ICMP ping response time'
+              event_name: 'Extreme VOSS: High ICMP ping response time (>{$ICMP.RESPONSE.TIME.WARN}s)'
+              opdata: 'Value: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'Average ICMP response time over 5 minutes exceeds {$ICMP.RESPONSE.TIME.WARN}s.'
+              dependencies:
+                - name: 'Extreme VOSS: High ICMP ping loss'
+                  expression: 'min(/Extreme VOSS by SNMP/icmppingloss,5m)>{$ICMP.LOSS.WARN} and min(/Extreme VOSS by SNMP/icmppingloss,5m)<100'
+                - name: 'Extreme VOSS: Unavailable by ICMP ping'
+                  expression: 'max(/Extreme VOSS by SNMP/icmpping,#3)=0'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: scope
+                  value: performance
+        - uuid: 831d193d2bab4f9a835ba3433dd18727
+          name: 'Extreme VOSS: SNMP agent availability'
+          type: INTERNAL
+          key: 'zabbix[host,snmp,available]'
+          history: 7d
+          description: |
+            Availability of SNMP checks on the host as reported by Zabbix (same as the host availability icon).
+            Values: not available (0), available (1), unknown (2).
+          valuemap:
+            name: zabbix.host.available
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: 41cacf5db63d4fe39dee0ff373842d40
+              expression: 'max(/Extreme VOSS by SNMP/zabbix[host,snmp,available],{$SNMP.TIMEOUT})=0'
+              name: 'Extreme VOSS: No SNMP data collection'
+              opdata: 'Current state: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'SNMP is not available for polling for {$SNMP.TIMEOUT}. Please check device connectivity and SNMP settings.'
+              dependencies:
+                - name: 'Extreme VOSS: Unavailable by ICMP ping'
+                  expression: 'max(/Extreme VOSS by SNMP/icmpping,#3)=0'
+              tags:
+                - tag: scope
+                  value: availability
+        - uuid: 3b53222520694a1b905ccae31578e446
+          name: 'Extreme VOSS: SNMP walk KHI slot performance'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.85.10.1.1.2,1.3.6.1.4.1.2272.1.85.10.1.1.6,1.3.6.1.4.1.2272.1.85.10.1.1.7,1.3.6.1.4.1.2272.1.85.10.1.1.8]'
+          key: extreme.khi.slot.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcKhiSlotPerfTable` for dependent CPU and memory metrics.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 1c0bcca0ad7b4321b335fe5a2b7f802b
+          name: 'Extreme VOSS: SNMP walk network interfaces'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.2.2.1.8,1.3.6.1.2.1.2.2.1.7,1.3.6.1.2.1.31.1.1.1.18,1.3.6.1.2.1.31.1.1.1.1,1.3.6.1.2.1.2.2.1.2,1.3.6.1.2.1.2.2.1.3,1.3.6.1.2.1.31.1.1.1.6,1.3.6.1.2.1.31.1.1.1.10,1.3.6.1.2.1.2.2.1.14,1.3.6.1.2.1.2.2.1.20,1.3.6.1.2.1.2.2.1.19,1.3.6.1.2.1.2.2.1.13,1.3.6.1.2.1.31.1.1.1.15]'
+          key: net.if.walk
+          delay: 1m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: IF-MIB
+            Scanning of IF-MIB interface tables for dependent discovery and metrics.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: a312ec2db65749419aaba5ff61e193b9
+          name: 'Extreme VOSS: SNMP walk ENTITY-MIB'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.2.1.47.1.1.1.1.5,1.3.6.1.2.1.47.1.1.1.1.11,1.3.6.1.2.1.47.1.1.1.1.13,1.3.6.1.2.1.47.1.1.1.1.9]'
+          key: system.hw.entities.walk
+          delay: 1h
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: ENTITY-MIB
+            Scanning of ENTITY-MIB physical entities for chassis inventory discovery.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 0072445a705e4b3d83b9266e0cd2f3cc
+          name: 'Extreme VOSS: SNMP walk temperature sensors'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.101.1.1.2.1.2,1.3.6.1.4.1.2272.1.101.1.1.2.1.3,1.3.6.1.4.1.2272.1.101.1.1.2.1.4,1.3.6.1.4.1.2272.1.101.1.1.2.1.5,1.3.6.1.4.1.2272.1.101.1.1.2.1.6]'
+          key: extreme.temp.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcVossSystemTemperatureTable`.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 897aead9e7bd463eb3b12ab1d82cf89e
+          name: 'Extreme VOSS: SNMP walk fans'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.101.1.1.4.1.3,1.3.6.1.4.1.2272.1.101.1.1.4.1.4,1.3.6.1.4.1.2272.1.101.1.1.4.1.5,1.3.6.1.4.1.2272.1.101.1.1.4.1.6]'
+          key: extreme.fan.walk
+          delay: 5m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcVossSystemFanInfoTable`.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: f9d949bcb24d478f9de5f2b6de56dce0
+          name: 'Extreme VOSS: SNMP walk power supplies'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.4.8.1.1.2]'
+          key: extreme.psu.walk
+          delay: 5m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcChasPowerSupplyTable`.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 943b258f29ea4db2b8050373197d55f2
+          name: 'Extreme VOSS: System description'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.1.0]'
+          key: 'system.descr[sysDescr.0]'
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: |
+            MIB: SNMPv2-MIB
+            sysDescr — textual description of the entity.
+          inventory_link: SOFTWARE_FULL
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: system
+        - uuid: 65ee895c9d83492eb12fcdd3fb20c443
+          name: 'Extreme VOSS: System name'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.5.0]'
+          key: 'system.name[sysName.0]'
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: |
+            MIB: SNMPv2-MIB
+            sysName — administratively assigned name for this managed node.
+          inventory_link: NAME
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: system
+        - uuid: 1d35aaa6d18e4b1c8c68dd0d64a3816d
+          name: 'Extreme VOSS: System location'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.6.0]'
+          key: 'system.location[sysLocation.0]'
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: |
+            MIB: SNMPv2-MIB
+            sysLocation — physical location of this node.
+          inventory_link: LOCATION
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: system
+        - uuid: a0e84b68303b402785030986c55a7b74
+          name: 'Extreme VOSS: System uptime'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.3.0]'
+          key: 'system.uptime[sysUpTime.0]'
+          delay: 5m
+          history: 7d
+          trends: 90d
+          units: uptime
+          description: |
+            MIB: SNMPv2-MIB
+            sysUpTime — time since the network management portion of the system was last re-initialized.
+            SNMP TimeTicks are converted to seconds (× 0.01).
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 62e1f63b7a484ec1be637d5dabd4fff5
+              expression: 'last(/Extreme VOSS by SNMP/system.uptime[sysUpTime.0])<10m'
+              name: 'Extreme VOSS: Device has been restarted'
+              priority: WARNING
+              manual_close: 'YES'
+              description: 'Device uptime is less than 10 minutes. Acknowledge to close the problem manually.'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: ec347a0b208a4241a6bbb7b3cc67c0fc
+          name: 'Extreme VOSS: SNMP walk Virtual IST'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.211.1,1.3.6.1.4.1.2272.1.211.3]'
+          key: extreme.vist.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of Virtual IST objects (`rcVirtualIstSessionStatus`, `rcVirtualIstVlanId`).
+            Feeds vIST discovery (metrics only when a vIST VLAN is configured).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 4d0b59d7c17646db84faf6311d5c2daa
+          name: 'Extreme VOSS: SNMP walk SLPP Guard'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.64.1.1.3.1.8,1.3.6.1.4.1.2272.1.64.1.1.3.1.10,1.3.6.1.4.1.2272.1.64.1.1.3.1.9,1.3.6.1.4.1.2272.1.64.1.1.3.1.11,1.3.6.1.4.1.2272.1.64.1.1.3.1.7]'
+          key: extreme.slpp.guard.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcSlppPortTable` SLPP Guard columns. Item labels use ifIndex (`{#SNMPINDEX}`).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: b1312dec0be04098ab0fdec576ea0cc2
+          name: 'Extreme VOSS: SNMP walk rcPort (BPDU Guard / Auto-Sense)'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.4.10.1.1.119,1.3.6.1.4.1.2272.1.4.10.1.1.114,1.3.6.1.4.1.2272.1.4.10.1.1.117,1.3.6.1.4.1.2272.1.4.10.1.1.118,1.3.6.1.4.1.2272.1.4.10.1.1.130,1.3.6.1.4.1.2272.1.4.10.1.1.134,1.3.6.1.2.1.31.1.1.1.1]'
+          key: extreme.rcport.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY / IF-MIB
+            Shared scanning of `RAPID-CITY::rcPortTable` BPDU Guard (enable/reason/timer/timeout),
+            Auto-Sense columns, plus ifName.
+          tags:
+            - tag: component
+              value: raw
+        - uuid: b9b9ca4ad1e44dd6b9a88f8e0f177a95
+          name: 'Extreme VOSS: SNMP walk EAPOL / 802.1X'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.0.8802.1.1.1.1.2.1.1.6,1.0.8802.1.1.1.1.2.1.1.5,1.0.8802.1.1.1.1.2.1.1.1,1.0.8802.1.1.1.1.2.1.1.2]'
+          key: extreme.eapol.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: IEEE8021-PAE-MIB
+            Scanning of Authenticator PAE objects (PortControl, PortStatus, PaeState, BackendAuthState).
+            Item labels use ifIndex (`{#SNMPINDEX}`).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: c0e5c1b1ff134649bbd0446d5b7fd9a7
+          name: 'Extreme VOSS: SNMP walk MLT'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.17.10.1.2,1.3.6.1.4.1.2272.1.17.10.1.8,1.3.6.1.4.1.2272.1.17.10.1.18,1.3.6.1.4.1.2272.1.17.10.1.22]'
+          key: extreme.mlt.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcMltTable` (name, enable, aggregatable, aggregation oper state).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: b5038d811e7c4e2289808131a2ec8174
+          name: 'Extreme VOSS: SNMP walk classic IST'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.17.3,1.3.6.1.4.1.2272.1.17.4]'
+          key: extreme.ist.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of classic IST objects (`rcMltIstSessionEnable`, `rcMltIstSessionStatus`).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: ebb3d4c6af224801a4c7491abe388491
+          name: 'Extreme VOSS: SNMP walk IS-IS circuits'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.63.2.1.2,1.3.6.1.4.1.2272.1.63.2.1.8,1.3.6.1.4.1.2272.1.63.2.1.9,1.3.6.1.4.1.2272.1.63.2.1.10]'
+          key: extreme.isis.circuit.walk
+          delay: 3m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcIsisCircuitTable` (type, oper state, adjacency counts).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: f930f7ecc5ec4099b351f63df37f9ead
+          name: 'Extreme VOSS: SNMP walk NTP'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.33.4.1.3,1.3.6.1.4.1.2272.1.33.4.1.12,1.3.6.1.4.1.2272.1.33.4.1.13,1.3.6.1.4.1.2272.1.33.4.1.22]'
+          key: extreme.ntp.walk
+          delay: 5m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of NTPv4 server table (enable, synchronized, reachable, hostname).
+          tags:
+            - tag: component
+              value: raw
+        - uuid: d58463461aac4b20a8d908c78aedc687
+          name: 'Extreme VOSS: SNMP walk RADIUS servers'
+          type: SNMP_AGENT
+          snmp_oid: 'walk[1.3.6.1.4.1.2272.1.29.5.1.6,1.3.6.1.4.1.2272.1.29.5.1.14,1.3.6.1.4.1.2272.1.29.5.1.15,1.3.6.1.4.1.2272.1.29.5.1.28]'
+          key: extreme.radius.walk
+          delay: 5m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: |
+            MIB: RAPID-CITY
+            Scanning of `RAPID-CITY::rcRadiusServHostTable` (enable, pending, retries, RTT).
+          tags:
+            - tag: component
+              value: raw
+      discovery_rules:
+        - uuid: 7db383e948b8448cb43bf678ad295cc9
+          name: 'Extreme VOSS: Virtual IST discovery'
+          type: DEPENDENT
+          key: extreme.vist.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#VIST.VLAN}'
+                value: '^[1-9][0-9]*$'
+                formulaid: A
+          description: |
+            Discovering Virtual IST from RAPID-CITY when `rcVirtualIstVlanId` is non-zero.
+            Standalone switches without vIST create no items or triggers.
+          item_prototypes:
+            - uuid: 24de6d9bef5d415383b4b88cc2e04db6
+              name: 'Extreme VOSS: vIST session status'
+              type: DEPENDENT
+              key: 'extreme.vist.session.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcVirtualIstSessionStatus — Virtual Inter-Switch Trunk (vIST) session state.
+                Values: up(1), down(2). Created only when a vIST VLAN is configured.
+              valuemap:
+                name: 'RAPID-CITY::rcVirtualIstSessionStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.211.1.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.vist.walk
+              tags:
+                - tag: component
+                  value: vist
+              trigger_prototypes:
+                - uuid: 46c2c734cef347f091919c43b418faed
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.vist.session.status[{#SNMPINDEX}])=2'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/extreme.vist.session.status[{#SNMPINDEX}])=1'
+                  name: 'Extreme VOSS: vIST session is DOWN'
+                  opdata: 'Status: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Virtual IST session between SMLT/vIST peers is down. Check vIST VLAN, peer reachability, and IST state.'
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: extreme.vist.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#VIST.VLAN}'
+                - 1.3.6.1.4.1.2272.1.211.3
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: fd29f43774174cd2a1145f69dca8984d
+          name: 'Extreme VOSS: SLPP Guard discovery'
+          type: DEPENDENT
+          key: extreme.slpp.guard.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#SLPP.GUARD.ENABLE}'
+                value: '^1$'
+                formulaid: A
+          description: 'Discovering SLPP Guard-enabled ports from `RAPID-CITY::rcSlppPortTable`.'
+          item_prototypes:
+            - uuid: 7a8e2db3edf44fd7b8f0ba789444f582
+              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Status'
+              type: DEPENDENT
+              key: 'extreme.slpp.guard.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcSlppPortGuardStatus — none(1), monitoring(2), blocking(3).
+                blocking means the port was disabled by SLPP Guard after receiving guard packets.
+              valuemap:
+                name: 'RAPID-CITY::rcSlppPortGuardStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.64.1.1.3.1.10.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.slpp.guard.walk
+              tags:
+                - tag: component
+                  value: slpp
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: 75d4c2ac703944ceafb81c13b3ea5db8
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.slpp.guard.status[{#SNMPINDEX}])=3'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/extreme.slpp.guard.status[{#SNMPINDEX}])<>3'
+                  name: 'Extreme VOSS: SLPP Guard blocked interface {#SNMPINDEX}'
+                  opdata: 'Status: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: |
+                    SLPP Guard put this port into blocking (port disabled after a detected loop).
+                    Investigate the loop and wait for `rcSlppPortGuardTimeout`, or clear the condition on the switch.
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: b5c26e27804047e38d66df8a4ef78f18
+              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Timer'
+              type: DEPENDENT
+              key: 'extreme.slpp.guard.timer[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              units: s
+              description: |
+                MIB: RAPID-CITY
+                rcSlppPortGuardTimerCount — seconds since SLPP Guard disabled the port.
+                When this reaches the timeout, the port is re-enabled (unless timeout is 0).
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.64.1.1.3.1.11.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.slpp.guard.walk
+              tags:
+                - tag: component
+                  value: slpp
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+            - uuid: f79d199ddc464b6dac51997f6ebbeb46
+              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Timeout'
+              type: DEPENDENT
+              key: 'extreme.slpp.guard.timeout[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              units: s
+              description: |
+                MIB: RAPID-CITY
+                rcSlppPortGuardTimeout — how long the port stays disabled. 0 means never auto-re-enable.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.64.1.1.3.1.9.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: extreme.slpp.guard.walk
+              tags:
+                - tag: component
+                  value: slpp
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+            - uuid: 2b68071ef37344c5b9789a234e577629
+              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Packets received'
+              type: DEPENDENT
+              key: 'extreme.slpp.guard.pkts[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              description: |
+                MIB: RAPID-CITY
+                rcSlppPortPktRxCount — total SLPP packets received on the port.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.64.1.1.3.1.7.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: extreme.slpp.guard.walk
+              tags:
+                - tag: component
+                  value: slpp
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+          master_item:
+            key: extreme.slpp.guard.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#SLPP.GUARD.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.64.1.1.3.1.8
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 50890aa6817242048ccb3476380103a8
+          name: 'Extreme VOSS: BPDU Guard discovery'
+          type: DEPENDENT
+          key: extreme.bpdu.guard.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#BPDU.GUARD.ENABLE}'
+                value: '^1$'
+                formulaid: A
+          description: 'Discovering BPDU Guard-enabled ports from `RAPID-CITY::rcPortTable`.'
+          item_prototypes:
+            - uuid: c69e42080cfd4833b37a1e97aeeb5c31
+              name: 'Extreme VOSS: BPDU Guard {#IFNAME}: Shutdown reason'
+              type: DEPENDENT
+              key: 'extreme.bpdu.guard.shutdown.reason[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcPortShutdownReason — reason for the last port state change.
+                bpduGuard(20) means the port is (or was) shut by BPDU Guard, including when
+                `rcPortBpduGuardTimeout` is 0 (manual recovery only; timer stays 0).
+              valuemap:
+                name: 'RAPID-CITY::rcPortShutdownReason'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.4.10.1.1.114.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.rcport.walk
+              tags:
+                - tag: component
+                  value: bpdu-guard
+                - tag: interface
+                  value: '{#IFNAME}'
+              trigger_prototypes:
+                - uuid: 4275c98c5fac4c14be6348e15556cd30
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.bpdu.guard.shutdown.reason[{#SNMPINDEX}])=20'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/extreme.bpdu.guard.shutdown.reason[{#SNMPINDEX}])<>20'
+                  name: 'Extreme VOSS: BPDU Guard shut interface {#IFNAME}'
+                  opdata: 'Reason: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: |
+                    BPDU Guard disabled this port after receiving a BPDU (unexpected switch on an edge port).
+                    Detected via rcPortShutdownReason=bpduGuard(20). When timeout is 0 the port stays shut
+                    until an operator re-enables it (timer count alone would miss that case).
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 8286d7fb22b74548999a19f82b578527
+              name: 'Extreme VOSS: BPDU Guard {#IFNAME}: Timer count'
+              type: DEPENDENT
+              key: 'extreme.bpdu.guard.timer[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: 90d
+              units: s
+              description: |
+                MIB: RAPID-CITY
+                rcPortBpduGuardTimerCount — BPDU Guard disable timer for this port.
+                Do not use alone for alerting: when timeout is 0 (infinite), the count stays 0
+                while the port remains shut. Use shutdown reason = bpduGuard(20) instead.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.4.10.1.1.117.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.rcport.walk
+              tags:
+                - tag: component
+                  value: bpdu-guard
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: b211a59755f0413bae047a7e974c706c
+              name: 'Extreme VOSS: BPDU Guard {#IFNAME}: Timeout'
+              type: DEPENDENT
+              key: 'extreme.bpdu.guard.timeout[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              units: s
+              description: |
+                MIB: RAPID-CITY
+                rcPortBpduGuardTimeout — configured disable duration after a BPDU is received.
+                0 means the port is not auto-re-enabled by timer.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.4.10.1.1.118.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: extreme.rcport.walk
+              tags:
+                - tag: component
+                  value: bpdu-guard
+                - tag: interface
+                  value: '{#IFNAME}'
+          master_item:
+            key: extreme.rcport.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#BPDU.GUARD.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.4.10.1.1.119
+                - '0'
+                - '{#IFNAME}'
+                - 1.3.6.1.2.1.31.1.1.1.1
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: bf45089e494d427ebe5f8d91394e8501
+          name: 'Extreme VOSS: Auto-Sense discovery'
+          type: DEPENDENT
+          key: extreme.autosense.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#AUTOSENSE.ENABLE}'
+                value: '^2$'
+                formulaid: A
+          description: 'Discovering Auto-Sense-enabled ports from `RAPID-CITY::rcPortTable`.'
+          item_prototypes:
+            - uuid: 39705dcdd075417381159fdaf1598e34
+              name: 'Extreme VOSS: Auto-Sense {#IFNAME}: State'
+              type: DEPENDENT
+              key: 'extreme.autosense.state[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcPortAutoSenseState — operational Auto-Sense / Zero Touch Fabric state of the port.
+              valuemap:
+                name: 'RAPID-CITY::rcPortAutoSenseState'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.4.10.1.1.134.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.rcport.walk
+              tags:
+                - tag: component
+                  value: autosense
+                - tag: interface
+                  value: '{#IFNAME}'
+              trigger_prototypes:
+                - uuid: cd2b1108f5544c0b9d5cef824c402ab6
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.autosense.state[{#SNMPINDEX}])=19 or last(/Extreme VOSS by SNMP/extreme.autosense.state[{#SNMPINDEX}])=23'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/extreme.autosense.state[{#SNMPINDEX}])<>19 and last(/Extreme VOSS by SNMP/extreme.autosense.state[{#SNMPINDEX}])<>23'
+                  name: 'Extreme VOSS: Auto-Sense {#IFNAME}: NNI authentication failed'
+                  opdata: 'State: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: |
+                    Auto-Sense reports nniAuthFail(19) or nniMltAuthFail(23).
+                    Check IS-IS / Fabric Attach authentication on this port.
+                  tags:
+                    - tag: scope
+                      value: availability
+                - uuid: 7cf4ca60aa694f36b8b690c9f1c48ee1
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.autosense.state[{#SNMPINDEX}])=6'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/extreme.autosense.state[{#SNMPINDEX}])<>6'
+                  name: 'Extreme VOSS: Auto-Sense {#IFNAME}: NNI loop detected'
+                  opdata: 'State: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Auto-Sense reports nniLoop(6). Investigate a fabric loop on this port.'
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: extreme.rcport.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#AUTOSENSE.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.4.10.1.1.130
+                - '0'
+                - '{#IFNAME}'
+                - 1.3.6.1.2.1.31.1.1.1.1
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: f6c22c24e9664aeeb861df60e6b70e21
+          name: 'Extreme VOSS: EAPOL / 802.1X discovery'
+          type: DEPENDENT
+          key: extreme.eapol.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#EAPOL.CONTROL}'
+                value: '^2$'
+                formulaid: A
+          description: |
+            Discovering EAPOL / 802.1X ports from IEEE8021-PAE-MIB where PortControl is auto(2).
+            forceAuthorized / forceUnauthorized ports are skipped.
+          item_prototypes:
+            - uuid: 4f759abf8cde411298b49811db9f4bb8
+              name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Port status'
+              type: DEPENDENT
+              key: 'extreme.eapol.port.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: IEEE8021-PAE-MIB
+                dot1xAuthAuthControlledPortStatus — authorized(1) or unauthorized(2).
+                Unauthorized alone is normal when no client is present; see PAE / backend triggers.
+              valuemap:
+                name: 'IEEE8021-PAE-MIB::PaeControlledPortStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.0.8802.1.1.1.1.2.1.1.5.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.eapol.walk
+              tags:
+                - tag: component
+                  value: eapol
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+            - uuid: 1d4a98fcf3934912b59f91a026b0ef05
+              name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: PAE state'
+              type: DEPENDENT
+              key: 'extreme.eapol.pae.state[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: IEEE8021-PAE-MIB
+                dot1xAuthPaeState — Authenticator PAE state machine.
+              valuemap:
+                name: 'IEEE8021-PAE-MIB::dot1xAuthPaeState'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.0.8802.1.1.1.1.2.1.1.1.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.eapol.walk
+              tags:
+                - tag: component
+                  value: eapol
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: 875cb030837741af9037dd8f6cf70f73
+                  expression: '{$EAPOLCONTROL:"{#SNMPINDEX}"}=1 and last(/Extreme VOSS by SNMP/extreme.eapol.pae.state[{#SNMPINDEX}])=7'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$EAPOLCONTROL:"{#SNMPINDEX}"}=0 or last(/Extreme VOSS by SNMP/extreme.eapol.pae.state[{#SNMPINDEX}])<>7'
+                  name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Authentication held (failed)'
+                  opdata: 'PAE: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  description: |
+                    Authenticator PAE is in held(7) after a failed authentication (quiet period).
+                    Check client credentials and RADIUS.
+                    To ignore this port, set {$EAPOLCONTROL:"{#SNMPINDEX}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+                - uuid: b7a2fa91c65b41e89eb8fd25fdb4ffd7
+                  expression: '{$EAPOLCONTROL:"{#SNMPINDEX}"}=1 and min(/Extreme VOSS by SNMP/extreme.eapol.pae.state[{#SNMPINDEX}],15m)=4'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$EAPOLCONTROL:"{#SNMPINDEX}"}=0 or last(/Extreme VOSS by SNMP/extreme.eapol.pae.state[{#SNMPINDEX}])<>4'
+                  name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Stuck authenticating'
+                  opdata: 'PAE: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: |
+                    PAE state has been authenticating(4) for 15 minutes.
+                    Check RADIUS reachability and client EAP negotiation.
+                    To ignore this port, set {$EAPOLCONTROL:"{#SNMPINDEX}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 9383d845ba39415186d959ba8363420c
+              name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Backend state'
+              type: DEPENDENT
+              key: 'extreme.eapol.backend.state[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: IEEE8021-PAE-MIB
+                dot1xAuthBackendAuthState — Backend Authentication state machine.
+              valuemap:
+                name: 'IEEE8021-PAE-MIB::dot1xAuthBackendAuthState'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.0.8802.1.1.1.1.2.1.1.2.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.eapol.walk
+              tags:
+                - tag: component
+                  value: eapol
+                - tag: interface
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: 0adbc3cc913a460bbf4ec4f2217da5db
+                  expression: '{$EAPOLCONTROL:"{#SNMPINDEX}"}=1 and (last(/Extreme VOSS by SNMP/extreme.eapol.backend.state[{#SNMPINDEX}])=4 or last(/Extreme VOSS by SNMP/extreme.eapol.backend.state[{#SNMPINDEX}])=5)'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$EAPOLCONTROL:"{#SNMPINDEX}"}=0 or (last(/Extreme VOSS by SNMP/extreme.eapol.backend.state[{#SNMPINDEX}])<>4 and last(/Extreme VOSS by SNMP/extreme.eapol.backend.state[{#SNMPINDEX}])<>5)'
+                  name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Backend auth fail / timeout'
+                  opdata: 'Backend: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  description: |
+                    Backend Authentication reports fail(4) or timeout(5).
+                    Typically a RADIUS reject or unreachable server.
+                    To ignore this port, set {$EAPOLCONTROL:"{#SNMPINDEX}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: extreme.eapol.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#EAPOL.CONTROL}'
+                - 1.0.8802.1.1.1.1.2.1.1.6
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 0e8a22c081534617b92c8ee3bdbefa31
+          name: 'Extreme VOSS: MLT discovery'
+          type: DEPENDENT
+          key: extreme.mlt.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#MLT.ENABLE}'
+                value: '^1$'
+                formulaid: A
+          description: |
+            Discovering Multi-Link Trunks from `RAPID-CITY::rcMltTable` where `rcMltEnable` is true(1).
+            Covers static MLT and LACP (aggregatable) trunks, including SMLT / IST types.
+          item_prototypes:
+            - uuid: 0994c71dbe5a4b059f88519841c997ed
+              name: 'Extreme VOSS: MLT {#MLT.NAME} ({#SNMPINDEX}): Aggregation state'
+              type: DEPENDENT
+              key: 'extreme.mlt.agg.state[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcMltAggOperState — link aggregation operational state on the MLT.
+                Meaningful when LACP/aggregatable is enabled; enable(1) = up, disable(2) = down.
+              valuemap:
+                name: 'RAPID-CITY::EnableValue'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.17.10.1.22.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.mlt.walk
+              tags:
+                - tag: component
+                  value: mlt
+                - tag: mlt
+                  value: '{#MLT.NAME}'
+              trigger_prototypes:
+                - uuid: ba094763f9104d76994367491541f0de
+                  expression: '{$MLTCONTROL:"{#MLT.NAME}"}=1 and last(/Extreme VOSS by SNMP/extreme.mlt.aggregatable[{#SNMPINDEX}])=1 and last(/Extreme VOSS by SNMP/extreme.mlt.agg.state[{#SNMPINDEX}])=2'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$MLTCONTROL:"{#MLT.NAME}"}=0 or last(/Extreme VOSS by SNMP/extreme.mlt.aggregatable[{#SNMPINDEX}])<>1 or last(/Extreme VOSS by SNMP/extreme.mlt.agg.state[{#SNMPINDEX}])=1'
+                  name: 'Extreme VOSS: MLT {#MLT.NAME} ({#SNMPINDEX}): LACP aggregation down'
+                  opdata: 'Agg: {ITEM.LASTVALUE2}'
+                  priority: HIGH
+                  description: |
+                    MLT has LACP/aggregatable enabled but `rcMltAggOperState` is disable(2).
+                    Check member ports and LACP negotiation.
+                    To ignore this MLT, set {$MLTCONTROL:"{#MLT.NAME}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: c98c24f30cac48848e912ed0c318b8d8
+              name: 'Extreme VOSS: MLT {#MLT.NAME} ({#SNMPINDEX}): Aggregatable'
+              type: DEPENDENT
+              key: 'extreme.mlt.aggregatable[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcMltAggregatable — whether link aggregation (LACP) is enabled on this MLT.
+              valuemap:
+                name: 'RAPID-CITY::EnableValue'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.17.10.1.18.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.mlt.walk
+              tags:
+                - tag: component
+                  value: mlt
+                - tag: mlt
+                  value: '{#MLT.NAME}'
+          master_item:
+            key: extreme.mlt.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#MLT.NAME}'
+                - 1.3.6.1.4.1.2272.1.17.10.1.2
+                - '0'
+                - '{#MLT.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.17.10.1.8
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: b662da558c15460bb8ef73f858b7b0f1
+          name: 'Extreme VOSS: Classic IST discovery'
+          type: DEPENDENT
+          key: extreme.ist.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#IST.ENABLE}'
+                value: '^1$'
+                formulaid: A
+          description: |
+            Discovering classic IST from RAPID-CITY when `rcMltIstSessionEnable` is enable(1).
+            Distinct from Virtual IST (`rcVirtualIst*`).
+          item_prototypes:
+            - uuid: 733e80a7175642adbff7db0b3cbb08b2
+              name: 'Extreme VOSS: Classic IST session status'
+              type: DEPENDENT
+              key: 'extreme.ist.session.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcMltIstSessionStatus — classic Inter-Switch Trunk session state.
+                Values: up(1), down(2).
+              valuemap:
+                name: 'RAPID-CITY::rcMltIstSessionStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.17.4.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.ist.walk
+              tags:
+                - tag: component
+                  value: ist
+              trigger_prototypes:
+                - uuid: 68c1e64493fe4d139b8b3291384727e5
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.ist.session.status[{#SNMPINDEX}])=2'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/extreme.ist.session.status[{#SNMPINDEX}])=1'
+                  name: 'Extreme VOSS: Classic IST session is DOWN'
+                  opdata: 'Status: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Classic IST (`rcMltIstSessionStatus`) is down. Check IST MLT and peer.'
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: extreme.ist.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#IST.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.17.3
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: eeda8eb1cbe3451ab71245c6784d28b6
+          name: 'Extreme VOSS: IS-IS circuit discovery'
+          type: DEPENDENT
+          key: extreme.isis.circuit.discovery
+          delay: '0'
+          description: |
+            Discovering IS-IS / SPB circuits from `RAPID-CITY::rcIsisCircuitTable`.
+            Empty on switches without IS-IS (no fabric NNI / SPBM circuits).
+          item_prototypes:
+            - uuid: 01130db0470844c19fedb37479a50734
+              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Oper state'
+              type: DEPENDENT
+              key: 'extreme.isis.circuit.oper[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcIsisCircuitOperState — IS-IS circuit operational state.
+                Values: unknown(0), up(1), down(2).
+              valuemap:
+                name: 'RAPID-CITY::rcIsisCircuitOperState'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.63.2.1.8.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.isis.circuit.walk
+              tags:
+                - tag: component
+                  value: isis
+                - tag: circuit
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: 9ec5f2b7139a4deea62672963ae0dbd0
+                  expression: '{$ISISCONTROL:"{#SNMPINDEX}"}=1 and last(/Extreme VOSS by SNMP/extreme.isis.circuit.oper[{#SNMPINDEX}])=2'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$ISISCONTROL:"{#SNMPINDEX}"}=0 or last(/Extreme VOSS by SNMP/extreme.isis.circuit.oper[{#SNMPINDEX}])=1'
+                  name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: DOWN'
+                  opdata: 'State: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: |
+                    IS-IS circuit operational state is down(2).
+                    Check NNI / SPB link and IS-IS adjacency.
+                    To ignore this circuit, set {$ISISCONTROL:"{#SNMPINDEX}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 3f0bdad6cdff4d63a48586006c2bcaab
+              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Adjacencies up'
+              type: DEPENDENT
+              key: 'extreme.isis.circuit.adj.up[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcIsisCircuitNumUpAdj — number of IS-IS adjacencies in UP state on this circuit.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.63.2.1.10.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.isis.circuit.walk
+              tags:
+                - tag: component
+                  value: isis
+                - tag: circuit
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: fde1c7351d104f19a5a7eb2635fdbe63
+                  expression: '{$ISISCONTROL:"{#SNMPINDEX}"}=1 and last(/Extreme VOSS by SNMP/extreme.isis.circuit.type[{#SNMPINDEX}])<>3 and last(/Extreme VOSS by SNMP/extreme.isis.circuit.adj[{#SNMPINDEX}])>0 and last(/Extreme VOSS by SNMP/extreme.isis.circuit.adj.up[{#SNMPINDEX}])=0'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$ISISCONTROL:"{#SNMPINDEX}"}=0 or last(/Extreme VOSS by SNMP/extreme.isis.circuit.type[{#SNMPINDEX}])=3 or last(/Extreme VOSS by SNMP/extreme.isis.circuit.adj[{#SNMPINDEX}])=0 or last(/Extreme VOSS by SNMP/extreme.isis.circuit.adj.up[{#SNMPINDEX}])>0'
+                  name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: No UP adjacencies'
+                  opdata: 'Up: {ITEM.LASTVALUE3} / Total: {ITEM.LASTVALUE2}'
+                  priority: HIGH
+                  description: |
+                    Circuit has adjacencies configured or seen, but none are UP (non-passive circuits).
+                    Fabric connectivity to neighbors may be broken.
+                    To ignore this circuit, set {$ISISCONTROL:"{#SNMPINDEX}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 93ebc11d5e4841e786d22ed4c02f2c0f
+              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Adjacencies'
+              type: DEPENDENT
+              key: 'extreme.isis.circuit.adj[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcIsisCircuitNumAdj — total IS-IS adjacencies on this circuit.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.63.2.1.9.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.isis.circuit.walk
+              tags:
+                - tag: component
+                  value: isis
+                - tag: circuit
+                  value: '{#SNMPINDEX}'
+            - uuid: 554bb2386f4d4622be4b31a1fb7e9eda
+              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Type'
+              type: DEPENDENT
+              key: 'extreme.isis.circuit.type[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcIsisCircuitType — bcast(1), ptpt(2), passive(3).
+              valuemap:
+                name: 'RAPID-CITY::rcIsisCircuitType'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.63.2.1.2.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.isis.circuit.walk
+              tags:
+                - tag: component
+                  value: isis
+                - tag: circuit
+                  value: '{#SNMPINDEX}'
+          master_item:
+            key: extreme.isis.circuit.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#ISIS.TYPE}'
+                - 1.3.6.1.4.1.2272.1.63.2.1.2
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 0eed5d523a9d4f5cb7d6d47ab01c10af
+          name: 'Extreme VOSS: NTP server discovery'
+          type: DEPENDENT
+          key: extreme.ntp.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#NTP.ENABLE}'
+                value: '^1$'
+                formulaid: A
+          description: 'Discovering enabled NTPv4 servers from RAPID-CITY.'
+          item_prototypes:
+            - uuid: 779a1ae23d93435e88ac88e4e4e11478
+              name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Sync status'
+              type: DEPENDENT
+              key: 'extreme.ntp.synchronized[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              description: |
+                MIB: RAPID-CITY
+                rcNtpv4ServerSynchronized — CLI sync status for this NTP server
+                (e.g. Candidate, Selected, Rejected — not a yes/no flag).
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.33.4.1.12.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.ntp.walk
+              tags:
+                - tag: component
+                  value: ntp
+                - tag: ntp
+                  value: '{#NTP.HOSTNAME}'
+              trigger_prototypes:
+                - uuid: a76a2d2c257d4187a22531ed9b0131db
+                  expression: 'find(/Extreme VOSS by SNMP/extreme.ntp.synchronized[{#SNMPINDEX}],,"regexp","{$NTP.SYNC.PROBLEM.MATCHES}")=1'
+                  name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Sync problem'
+                  opdata: 'Sync: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  description: |
+                    NTP server sync status matches {$NTP.SYNC.PROBLEM.MATCHES}
+                    (e.g. Rejected / Discarded / not synchronized). Candidate/Selected peers are OK.
+                    Check NTP configuration and reachability to this server.
+                  dependencies:
+                    - name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Unreachable'
+                      expression: 'find(/Extreme VOSS by SNMP/extreme.ntp.reachable[{#SNMPINDEX}],,"eq","{$NTP.REACHABLE.OK}")=0'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 40632afe7a434a3d9cda0b13df0062b2
+              name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Reachable'
+              type: DEPENDENT
+              key: 'extreme.ntp.reachable[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              description: |
+                MIB: RAPID-CITY
+                rcNtpv4ServerReachable — reachability status string for this NTP server.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.33.4.1.13.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.ntp.walk
+              tags:
+                - tag: component
+                  value: ntp
+                - tag: ntp
+                  value: '{#NTP.HOSTNAME}'
+              trigger_prototypes:
+                - uuid: 6774f1efaae145d59745c2a3d2f66ee3
+                  expression: 'find(/Extreme VOSS by SNMP/extreme.ntp.reachable[{#SNMPINDEX}],,"eq","{$NTP.REACHABLE.OK}")=0'
+                  name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Unreachable'
+                  opdata: 'Reachable: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: |
+                    NTP server reachability is not {$NTP.REACHABLE.OK}.
+                    Check NTP configuration and network path to this server.
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: extreme.ntp.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#NTP.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.33.4.1.3
+                - '0'
+                - '{#NTP.HOSTNAME}'
+                - 1.3.6.1.4.1.2272.1.33.4.1.22
+                - '0'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var rows = JSON.parse(value);
+                  return JSON.stringify(rows.map(function (r) {
+                    if (!r['{#NTP.HOSTNAME}']) {
+                      r['{#NTP.HOSTNAME}'] = r['{#SNMPINDEX}'];
+                    }
+                    return r;
+                  }));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 7364dcdcb9544068ad44ccb2965be3c8
+          name: 'Extreme VOSS: RADIUS server discovery'
+          type: DEPENDENT
+          key: extreme.radius.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#RADIUS.ENABLE}'
+                value: '^1$'
+                formulaid: A
+          description: |
+            Discovering enabled RADIUS servers from `RAPID-CITY::rcRadiusServHostTable`.
+            Index is InetAddressType + InetAddress (with length sub-identifier) + UsedBy
+            (cli/snmp/eap/web/endpointTracking).
+          item_prototypes:
+            - uuid: 206e6fb398ca492dbe19774d3b8cfcf2
+              name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Round-trip time'
+              type: DEPENDENT
+              key: 'extreme.radius.rtt[{#SNMPINDEX}]'
+              delay: '0'
+              history: 30d
+              trends: '0'
+              value_type: TEXT
+              description: |
+                MIB: RAPID-CITY
+                rcRadiusServHostRoundTripTime — RTT string from reachability probes (informational).
+                Unreachable servers typically report empty / N/A / Unreachable.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.29.5.1.28.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.radius.walk
+              tags:
+                - tag: component
+                  value: radius
+                - tag: radius
+                  value: '{#RADIUS.SERVER}'
+                - tag: used-by
+                  value: '{#RADIUS.USEDBY}'
+            - uuid: 997facdae9bf4da29ba89c88b199bbc0
+              name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Pending requests'
+              type: DEPENDENT
+              key: 'extreme.radius.pending[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              description: |
+                MIB: RAPID-CITY
+                rcRadiusServHostPendingRequests — outstanding access-requests without response.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.29.5.1.14.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.radius.walk
+              tags:
+                - tag: component
+                  value: radius
+                - tag: radius
+                  value: '{#RADIUS.SERVER}'
+              trigger_prototypes:
+                - uuid: 2227e807a27a4bfe8c6901df2c787afd
+                  expression: '{$RADIUSCONTROL:"{#RADIUS.SERVER}"}=1 and min(/Extreme VOSS by SNMP/extreme.radius.pending[{#SNMPINDEX}],10m)>0'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$RADIUSCONTROL:"{#RADIUS.SERVER}"}=0 or last(/Extreme VOSS by SNMP/extreme.radius.pending[{#SNMPINDEX}])=0'
+                  name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Pending requests stuck'
+                  opdata: 'Pending: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: |
+                    Access-requests have been pending for 10 minutes. The server is often not responding.
+                    To ignore this server, set {$RADIUSCONTROL:"{#RADIUS.SERVER}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: f89c4f4df65c48a8a35055ed5ce7cfc7
+              name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Client retries'
+              type: DEPENDENT
+              key: 'extreme.radius.retries[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: rps
+              description: |
+                MIB: RAPID-CITY
+                rcRadiusServHostClientRetries — authentication retransmissions to this server
+                (rate via CHANGE_PER_SECOND; FLOAT so fractional rps below 1 are preserved).
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.29.5.1.15.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              master_item:
+                key: extreme.radius.walk
+              tags:
+                - tag: component
+                  value: radius
+                - tag: radius
+                  value: '{#RADIUS.SERVER}'
+              trigger_prototypes:
+                - uuid: 25086995af8649d59d14cb345b2c6f4e
+                  expression: '{$RADIUSCONTROL:"{#RADIUS.SERVER}"}=1 and avg(/Extreme VOSS by SNMP/extreme.radius.retries[{#SNMPINDEX}],10m)>{$RADIUS.RETRIES.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: '{$RADIUSCONTROL:"{#RADIUS.SERVER}"}=0 or avg(/Extreme VOSS by SNMP/extreme.radius.retries[{#SNMPINDEX}],10m)<={$RADIUS.RETRIES.WARN}'
+                  name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: High retry rate'
+                  event_name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: High retry rate (>{$RADIUS.RETRIES.WARN}/s)'
+                  opdata: 'Retries/s: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: |
+                    Elevated RADIUS client retransmission rate. Check server reachability and timeouts.
+                    To ignore this server, set {$RADIUSCONTROL:"{#RADIUS.SERVER}"}=0 on the host.
+                  tags:
+                    - tag: scope
+                      value: performance
+          master_item:
+            key: extreme.radius.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#RADIUS.ENABLE}'
+                - 1.3.6.1.4.1.2272.1.29.5.1.6
+                - '0'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var usedByMap = {1: 'cli', 3: 'snmp', 4: 'eap', 5: 'web', 6: 'endpointTracking'};
+                  var rows = JSON.parse(value);
+                  return JSON.stringify(rows.map(function (r) {
+                    // INDEX: InetAddressType, InetAddress (OCTET STRING), UsedBy
+                    // SMIv2 encodes InetAddress as T.N.O1..On (length N is required).
+                    var parts = String(r['{#SNMPINDEX}']).split('.');
+                    var usedByCode = parts[parts.length - 1];
+                    var usedBy = usedByMap[usedByCode] || usedByCode;
+                    var type = parseInt(parts[0], 10);
+                    var len = parseInt(parts[1], 10);
+                    var addr = r['{#SNMPINDEX}'];
+                    if (!isNaN(type) && !isNaN(len) && len >= 0 && parts.length >= (2 + len + 1)) {
+                      var octets = parts.slice(2, 2 + len).map(function (x) { return parseInt(x, 10); });
+                      if (type === 1 || type === 3) {
+                        // ipv4(1) / ipv4z(3): first 4 octets are the address
+                        addr = octets.slice(0, 4).join('.');
+                      } else if ((type === 2 || type === 4) && octets.length >= 16) {
+                        // ipv6(2) / ipv6z(4): format 8 hextets from 16 octets
+                        var groups = [];
+                        for (var i = 0; i < 16; i += 2) {
+                          groups.push(((octets[i] << 8) | octets[i + 1]).toString(16));
+                        }
+                        addr = groups.join(':');
+                      } else if (octets.length) {
+                        addr = octets.join('.');
+                      }
+                    }
+                    return {
+                      '{#SNMPINDEX}': r['{#SNMPINDEX}'],
+                      '{#RADIUS.ENABLE}': r['{#RADIUS.ENABLE}'],
+                      '{#RADIUS.USEDBY}': usedBy,
+                      '{#RADIUS.SERVER}': addr + '/' + usedBy
+                    };
+                  }));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 36abfe98168841c5a9566573c97a4416
+          name: 'Extreme VOSS: Chassis inventory discovery'
+          type: DEPENDENT
+          key: system.hw.chassis.discovery
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#ENT.CLASS}'
+                value: '^3$'
+                formulaid: A
+          description: 'Discovering chassis entities (entPhysicalClass = chassis) from ENTITY-MIB.'
+          item_prototypes:
+            - uuid: c4833119de1f4b53b872a7216af08698
+              name: 'Extreme VOSS: Hardware serial number'
+              type: DEPENDENT
+              key: 'system.hw.serialnumber[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: |
+                MIB: ENTITY-MIB
+                entPhysicalSerialNum for chassis.
+              inventory_link: SERIALNO_A
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.47.1.1.1.1.11.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: system.hw.entities.walk
+              tags:
+                - tag: component
+                  value: inventory
+            - uuid: 424c57662bfa4588a2a33965c23c42bc
+              name: 'Extreme VOSS: Hardware model name'
+              type: DEPENDENT
+              key: 'system.hw.model[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: |
+                MIB: ENTITY-MIB
+                entPhysicalModelName for chassis.
+              inventory_link: MODEL
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.47.1.1.1.1.13.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: system.hw.entities.walk
+              tags:
+                - tag: component
+                  value: inventory
+            - uuid: 525bb6816a4b4ac885a9ec6883177ef9
+              name: 'Extreme VOSS: Firmware version'
+              type: DEPENDENT
+              key: 'system.hw.firmware[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: |
+                MIB: ENTITY-MIB
+                entPhysicalSoftwareRev for chassis.
+              inventory_link: OS_FULL
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.47.1.1.1.1.9.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: system.hw.entities.walk
+              tags:
+                - tag: component
+                  value: inventory
+          master_item:
+            key: system.hw.entities.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#ENT.CLASS}'
+                - 1.3.6.1.2.1.47.1.1.1.1.5
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+        - uuid: 3bdf69e29fdf47af8efeb4d722a7b93a
+          name: 'Extreme VOSS: KHI slot discovery'
+          type: DEPENDENT
+          key: extreme.khi.slot.discovery
+          delay: '0'
+          description: 'Discovering CPU and memory slots from `RAPID-CITY::rcKhiSlotPerfTable`.'
+          item_prototypes:
+            - uuid: a55f58f5462e467d9090a67a148aeb4f
+              name: 'Extreme VOSS: Slot {#SNMPINDEX}: CPU utilization'
+              type: DEPENDENT
+              key: 'extreme.cpu.util[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: '%'
+              description: |
+                MIB: RAPID-CITY
+                rcKhiSlotCpuCurrentUtil — CPU utilization (%) for this slot.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.85.10.1.1.2.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.khi.slot.walk
+              tags:
+                - tag: component
+                  value: cpu
+                - tag: slot
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: b275786f65a9454c8d7d04a10bb28e4f
+                  expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.CRIT}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)<={$CPU.UTIL.CRIT}-5'
+                  name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization'
+                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization (>{$CPU.UTIL.CRIT}%)'
+                  opdata: 'Avg 5m: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Average CPU utilization over 5 minutes exceeds {$CPU.UTIL.CRIT}%. It recovers when utilization stays at least 5% below the threshold.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                - uuid: 6e18162dbf6a4f80bf31cb41898541f7
+                  expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)<={$CPU.UTIL.WARN}-5'
+                  name: 'Extreme VOSS: Slot {#SNMPINDEX}: High CPU utilization'
+                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: High CPU utilization (>{$CPU.UTIL.WARN}%)'
+                  opdata: 'Avg 5m: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: 'Average CPU utilization over 5 minutes exceeds {$CPU.UTIL.WARN}%. It recovers when utilization stays at least 5% below the threshold.'
+                  dependencies:
+                    - name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization'
+                      expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.CRIT}'
+                  tags:
+                    - tag: scope
+                      value: performance
+            - uuid: 96de907f6b3d4ea5acc7bc685be00ab6
+              name: 'Extreme VOSS: Slot {#SNMPINDEX}: Memory utilization'
+              type: DEPENDENT
+              key: 'extreme.mem.util[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: '%'
+              description: |
+                MIB: RAPID-CITY
+                rcKhiSlotMemUtil — memory utilization (%) for this slot.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.85.10.1.1.8.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.khi.slot.walk
+              tags:
+                - tag: component
+                  value: memory
+                - tag: slot
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: 9f3a112bcc7d4e8fa91c3d5870b2e441
+                  expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.CRIT}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)<={$MEMORY.UTIL.CRIT}-5'
+                  name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization'
+                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization (>{$MEMORY.UTIL.CRIT}%)'
+                  opdata: 'Avg 10m: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Average memory utilization over 10 minutes exceeds {$MEMORY.UTIL.CRIT}%. It recovers when utilization stays at least 5% below the threshold.'
+                  tags:
+                    - tag: scope
+                      value: capacity
+                - uuid: 3bce558adf854c66a04bee81229a27fa
+                  expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)<={$MEMORY.UTIL.WARN}-5'
+                  name: 'Extreme VOSS: Slot {#SNMPINDEX}: High memory utilization'
+                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: High memory utilization (>{$MEMORY.UTIL.WARN}%)'
+                  opdata: 'Avg 10m: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: 'Average memory utilization over 10 minutes exceeds {$MEMORY.UTIL.WARN}%. It recovers when utilization stays at least 5% below the threshold.'
+                  dependencies:
+                    - name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization'
+                      expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.CRIT}'
+                  tags:
+                    - tag: scope
+                      value: capacity
+            - uuid: 76e749cb45094d63a17cf359985f5a1d
+              name: 'Extreme VOSS: Slot {#SNMPINDEX}: Memory used'
+              type: DEPENDENT
+              key: 'extreme.mem.used[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              units: B
+              description: |
+                MIB: RAPID-CITY
+                rcKhiSlotMemUsed — DRAM in use (KB reported by device, stored as bytes).
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.85.10.1.1.6.{#SNMPINDEX}'
+                    - '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1024'
+              master_item:
+                key: extreme.khi.slot.walk
+              tags:
+                - tag: component
+                  value: memory
+                - tag: slot
+                  value: '{#SNMPINDEX}'
+            - uuid: 61cd64f1fc5948ed881a76b3d9afc1ff
+              name: 'Extreme VOSS: Slot {#SNMPINDEX}: Memory free'
+              type: DEPENDENT
+              key: 'extreme.mem.free[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              units: B
+              description: |
+                MIB: RAPID-CITY
+                rcKhiSlotMemFree — free DRAM (KB reported by device, stored as bytes).
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.85.10.1.1.7.{#SNMPINDEX}'
+                    - '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1024'
+              master_item:
+                key: extreme.khi.slot.walk
+              tags:
+                - tag: component
+                  value: memory
+                - tag: slot
+                  value: '{#SNMPINDEX}'
+          master_item:
+            key: extreme.khi.slot.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#SLOT}'
+                - 1.3.6.1.4.1.2272.1.85.10.1.1.2
+                - '0'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  return JSON.stringify(JSON.parse(value).map(function (r) {
+                    return {'{#SNMPINDEX}': r['{#SNMPINDEX}']};
+                  }));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 36320fe027cc4a26ab3cfe54331fabf8
+          name: 'Extreme VOSS: Temperature sensor discovery'
+          type: DEPENDENT
+          key: extreme.temp.discovery
+          delay: '0'
+          description: 'Discovering temperature sensors from `RAPID-CITY::rcVossSystemTemperatureTable`.'
+          item_prototypes:
+            - uuid: 2f4e0c68dd174e8ba47f55eeed1716b5
+              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}'
+              type: DEPENDENT
+              key: 'extreme.temp.value[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: °C
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemTemperatureTemperature — sensor reading in Celsius.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.2.1.3.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.temp.walk
+              tags:
+                - tag: component
+                  value: temperature
+                - tag: sensor
+                  value: '{#SENSOR.NAME}'
+              trigger_prototypes:
+                - uuid: 6a266b7d8e6747debea439dae97e1a50
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.temp.value[{#SNMPINDEX}])>=last(/Extreme VOSS by SNMP/extreme.temp.crit[{#SNMPINDEX}]) and last(/Extreme VOSS by SNMP/extreme.temp.crit[{#SNMPINDEX}])>0'
+                  name: 'Extreme VOSS: {#SENSOR.NAME}: Temperature is critically high'
+                  event_name: 'Extreme VOSS: {#SENSOR.NAME}: Temperature is critically high (>={ITEM.VALUE2}°C)'
+                  opdata: 'Current value: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Sensor temperature reached the device critical threshold. Please check the cooling system.'
+                  tags:
+                    - tag: scope
+                      value: availability
+                - uuid: 0d11a093abbf4a7d966b3848ffe0818e
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.temp.value[{#SNMPINDEX}])>=last(/Extreme VOSS by SNMP/extreme.temp.warn[{#SNMPINDEX}]) and last(/Extreme VOSS by SNMP/extreme.temp.warn[{#SNMPINDEX}])>0'
+                  name: 'Extreme VOSS: {#SENSOR.NAME}: Temperature is high'
+                  event_name: 'Extreme VOSS: {#SENSOR.NAME}: Temperature is high (>={ITEM.VALUE2}°C)'
+                  opdata: 'Current value: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: 'Sensor temperature reached the device warning threshold. Please check the cooling system.'
+                  dependencies:
+                    - name: 'Extreme VOSS: {#SENSOR.NAME}: Temperature is critically high'
+                      expression: 'last(/Extreme VOSS by SNMP/extreme.temp.value[{#SNMPINDEX}])>=last(/Extreme VOSS by SNMP/extreme.temp.crit[{#SNMPINDEX}]) and last(/Extreme VOSS by SNMP/extreme.temp.crit[{#SNMPINDEX}])>0'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 3bca88be317c4126becf81e19238fb26
+              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}: Warning threshold'
+              type: DEPENDENT
+              key: 'extreme.temp.warn[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              units: °C
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemTemperatureWarningThreshold.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.2.1.4.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: extreme.temp.walk
+              tags:
+                - tag: component
+                  value: temperature
+            - uuid: 14a0ecaea588430a8c71639715f664e9
+              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}: Critical threshold'
+              type: DEPENDENT
+              key: 'extreme.temp.crit[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              units: °C
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemTemperatureCriticalThreshold.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.2.1.5.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: extreme.temp.walk
+              tags:
+                - tag: component
+                  value: temperature
+            - uuid: 876220f4c00c4512af0edb5d10dfa081
+              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}: Status'
+              type: DEPENDENT
+              key: 'extreme.temp.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemTemperatureStatus — normal(1), highWarning(2), highCritical(3).
+              valuemap:
+                name: 'RAPID-CITY::rcVossSystemTemperatureStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.2.1.6.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.temp.walk
+              tags:
+                - tag: component
+                  value: temperature
+          master_item:
+            key: extreme.temp.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#SENSOR.NAME}'
+                - 1.3.6.1.4.1.2272.1.101.1.1.2.1.2
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 9da1e81e4170448884cc8354d228a9e9
+          name: 'Extreme VOSS: Fan discovery'
+          type: DEPENDENT
+          key: extreme.fan.discovery
+          delay: '0'
+          description: |
+            Discovering fans from `RAPID-CITY::rcVossSystemFanInfoTable`.
+            Preprocessing excludes notPresent(4). Status is omitted from LLD JSON to avoid rediscovery on up/down.
+          item_prototypes:
+            - uuid: 1e4bc4ed9ee24bd2ac5534f9952baa43
+              name: 'Extreme VOSS: Fan {#FAN.NAME}: Status'
+              type: DEPENDENT
+              key: 'extreme.fan.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemFanInfoOperStatus — unknown(1), up(2), down(3), notPresent(4).
+              valuemap:
+                name: 'RAPID-CITY::rcVossSystemFanInfoOperStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.4.1.4.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.fan.walk
+              tags:
+                - tag: component
+                  value: fan
+                - tag: fan
+                  value: '{#FAN.NAME}'
+              trigger_prototypes:
+                - uuid: 5aaa37a65e7440188fcf3349c948946b
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.fan.status[{#SNMPINDEX}])=3'
+                  name: 'Extreme VOSS: Fan {#FAN.NAME} is DOWN'
+                  opdata: 'Current state: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Please check the fan for errors.'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 75780453ff2d47a3886eccb762b26b2d
+              name: 'Extreme VOSS: Fan {#FAN.NAME}: Speed'
+              type: DEPENDENT
+              key: 'extreme.fan.speed[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemFanInfoOperSpeed — low(1), medium(2), high(3).
+              valuemap:
+                name: 'RAPID-CITY::rcVossSystemFanInfoOperSpeed'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.4.1.5.{#SNMPINDEX}'
+                    - '0'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: extreme.fan.walk
+              tags:
+                - tag: component
+                  value: fan
+            - uuid: 27607af0f12142c48f6fdb8d73cdd661
+              name: 'Extreme VOSS: Fan {#FAN.NAME}: RPM'
+              type: DEPENDENT
+              key: 'extreme.fan.rpm[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              units: rpm
+              description: |
+                MIB: RAPID-CITY
+                rcVossSystemFanInfoOperSpeedRpm.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.101.1.1.4.1.6.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.fan.walk
+              tags:
+                - tag: component
+                  value: fan
+          master_item:
+            key: extreme.fan.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#FAN.NAME}'
+                - 1.3.6.1.4.1.2272.1.101.1.1.4.1.3
+                - '0'
+                - '{#FAN.STATUS}'
+                - 1.3.6.1.4.1.2272.1.101.1.1.4.1.4
+                - '0'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  return JSON.stringify(JSON.parse(value).filter(function (r) {
+                    return String(r['{#FAN.STATUS}']) !== '4';
+                  }).map(function (r) {
+                    return {
+                      '{#SNMPINDEX}': r['{#SNMPINDEX}'],
+                      '{#FAN.NAME}': r['{#FAN.NAME}']
+                    };
+                  }));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: ccbedd5c643846dc9f71563fbe8586e5
+          name: 'Extreme VOSS: Power supply discovery'
+          type: DEPENDENT
+          key: extreme.psu.discovery
+          delay: '0'
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#PSU.STATUS}'
+                value: '{$PSU.STATUS.MATCHES}'
+                formulaid: A
+              - macro: '{#PSU.STATUS}'
+                value: '{$PSU.STATUS.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+          description: |
+            Discovering power supplies from `RAPID-CITY::rcChasPowerSupplyTable`.
+            Filter uses And (not And/Or) so MATCHES and NOT_MATCHES both apply; default excludes empty(2).
+          item_prototypes:
+            - uuid: b3beaf38fe5c485a8c79f79c65b45630
+              name: 'Extreme VOSS: PSU {#SNMPINDEX}: Status'
+              type: DEPENDENT
+              key: 'extreme.psu.status[{#SNMPINDEX}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              description: |
+                MIB: RAPID-CITY
+                rcChasPowerSupplyOperStatus — unknown(1), empty(2), up(3), down(4).
+              valuemap:
+                name: 'RAPID-CITY::rcChasPowerSupplyOperStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.4.1.2272.1.4.8.1.1.2.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: extreme.psu.walk
+              tags:
+                - tag: component
+                  value: power
+                - tag: psu
+                  value: '{#SNMPINDEX}'
+              trigger_prototypes:
+                - uuid: 16b2f29877d8478ab23bf78632bb4d9d
+                  expression: 'last(/Extreme VOSS by SNMP/extreme.psu.status[{#SNMPINDEX}])=4'
+                  name: 'Extreme VOSS: PSU {#SNMPINDEX} is DOWN'
+                  opdata: 'Current state: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'Please check the power supply for errors.'
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: extreme.psu.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#PSU.STATUS}'
+                - 1.3.6.1.4.1.2272.1.4.8.1.1.2
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+        - uuid: 454935f5f6fa4eb5990063303f774db1
+          name: 'Extreme VOSS: Network interfaces discovery'
+          type: DEPENDENT
+          key: net.if.discovery
+          delay: '0'
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#IFADMINSTATUS}'
+                value: '{$NET.IF.IFADMINSTATUS.MATCHES}'
+                formulaid: A
+              - macro: '{#IFADMINSTATUS}'
+                value: '{$NET.IF.IFADMINSTATUS.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+              - macro: '{#IFOPERSTATUS}'
+                value: '{$NET.IF.IFOPERSTATUS.MATCHES}'
+                formulaid: C
+              - macro: '{#IFOPERSTATUS}'
+                value: '{$NET.IF.IFOPERSTATUS.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: D
+              - macro: '{#IFNAME}'
+                value: '{$NET.IF.IFNAME.MATCHES}'
+                formulaid: E
+              - macro: '{#IFNAME}'
+                value: '{$NET.IF.IFNAME.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: F
+              - macro: '{#IFDESCR}'
+                value: '{$NET.IF.IFDESCR.MATCHES}'
+                formulaid: G
+              - macro: '{#IFDESCR}'
+                value: '{$NET.IF.IFDESCR.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: H
+              - macro: '{#IFALIAS}'
+                value: '{$NET.IF.IFALIAS.MATCHES}'
+                formulaid: I
+              - macro: '{#IFALIAS}'
+                value: '{$NET.IF.IFALIAS.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: J
+              - macro: '{#IFTYPE}'
+                value: '{$NET.IF.IFTYPE.MATCHES}'
+                formulaid: K
+              - macro: '{#IFTYPE}'
+                value: '{$NET.IF.IFTYPE.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: L
+          description: 'Discovering interfaces from IF-MIB.'
+          item_prototypes:
+            - uuid: 80a37b4f40074eff9282dfabf32c08b1
+              name: 'Interface {#IFNAME}({#IFALIAS}): Inbound packets discarded'
+              type: DEPENDENT
+              key: 'net.if.in.discards[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: pps
+              description: |
+                MIB: IF-MIB
+                ifInDiscards — inbound discard rate.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.2.2.1.13.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 3m
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 6cadbfd7f54645cf96719220f87ae588
+              name: 'Interface {#IFNAME}({#IFALIAS}): Inbound packets with errors'
+              type: DEPENDENT
+              key: 'net.if.in.errors[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: eps
+              description: |
+                MIB: IF-MIB
+                ifInErrors — inbound error rate.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.2.2.1.14.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 3m
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 509a149d80484b1e981b352f0aa3a045
+              name: 'Interface {#IFNAME}({#IFALIAS}): Bits received'
+              type: DEPENDENT
+              key: 'net.if.in[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              units: bps
+              description: |
+                MIB: IF-MIB
+                ifHCInOctets — bits received per second.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.31.1.1.1.6.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 3c4383756fe24cce932327769136fa37
+              name: 'Interface {#IFNAME}({#IFALIAS}): Inbound utilization'
+              type: CALCULATED
+              key: 'net.if.in.util[{#IFNAME}]'
+              delay: 1m
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: '%'
+              params: 'last(//net.if.in[{#IFNAME}])/(last(//net.if.speed[{#IFNAME}])+(last(//net.if.speed[{#IFNAME}])=0))*100*(last(//net.if.speed[{#IFNAME}])>0)'
+              description: |
+                Inbound bandwidth utilization in % of interface speed.
+                When ifHighSpeed is 0 (common on oper-down ports), result is 0 — avoids division by zero.
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 65d0ea20e6b34128aaa93a238c474382
+              name: 'Interface {#IFNAME}({#IFALIAS}): Outbound packets discarded'
+              type: DEPENDENT
+              key: 'net.if.out.discards[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: pps
+              description: |
+                MIB: IF-MIB
+                ifOutDiscards — outbound discard rate.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.2.2.1.19.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 3m
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 05b491f2b92a47e6b7ed44aa338702c7
+              name: 'Interface {#IFNAME}({#IFALIAS}): Outbound packets with errors'
+              type: DEPENDENT
+              key: 'net.if.out.errors[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: eps
+              description: |
+                MIB: IF-MIB
+                ifOutErrors — outbound error rate.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.2.2.1.20.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 3m
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 91646253ef424e19b33a8dd24103ac3b
+              name: 'Interface {#IFNAME}({#IFALIAS}): Bits sent'
+              type: DEPENDENT
+              key: 'net.if.out[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: 90d
+              units: bps
+              description: |
+                MIB: IF-MIB
+                ifHCOutOctets — bits transmitted per second.
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.31.1.1.1.10.{#SNMPINDEX}'
+                    - '0'
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: d2f985ea1a0c467db32c918bf34f0cef
+              name: 'Interface {#IFNAME}({#IFALIAS}): Outbound utilization'
+              type: CALCULATED
+              key: 'net.if.out.util[{#IFNAME}]'
+              delay: 1m
+              history: 7d
+              trends: 90d
+              value_type: FLOAT
+              units: '%'
+              params: 'last(//net.if.out[{#IFNAME}])/(last(//net.if.speed[{#IFNAME}])+(last(//net.if.speed[{#IFNAME}])=0))*100*(last(//net.if.speed[{#IFNAME}])>0)'
+              description: |
+                Outbound bandwidth utilization in % of interface speed.
+                When ifHighSpeed is 0 (common on oper-down ports), result is 0 — avoids division by zero.
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: 9aec902203764232ba2129c788d4bc14
+              name: 'Interface {#IFNAME}({#IFALIAS}): Speed'
+              type: DEPENDENT
+              key: 'net.if.speed[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              units: bps
+              description: |
+                MIB: IF-MIB
+                ifHighSpeed — estimate of current bandwidth (stored as bits per second).
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.31.1.1.1.15.{#SNMPINDEX}'
+                    - '0'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000000'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+            - uuid: d7e235a618d748d4b694c22aa2780b3f
+              name: 'Interface {#IFNAME}({#IFALIAS}): Operational status'
+              type: DEPENDENT
+              key: 'net.if.status[{#IFNAME}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              description: |
+                MIB: IF-MIB
+                ifOperStatus — current operational state of the interface.
+              valuemap:
+                name: 'IF-MIB::ifOperStatus'
+              preprocessing:
+                - type: SNMP_WALK_VALUE
+                  parameters:
+                    - '1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}'
+                    - '0'
+              master_item:
+                key: net.if.walk
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IFNAME}'
+              trigger_prototypes:
+                - uuid: c1511d298ddc4054bfe09b732c9c667b
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
+                  name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
+                  opdata: 'Current state: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  description: |
+                    This trigger expression works as follows:
+                    1. It can be triggered if the operational status is down.
+                    2. `{$IFCONTROL:"{#IFNAME}"}=1` - a user can redefine the context macro to 0. That marks this interface as not important. No new trigger will fire if this interface is down.
+                    3. The trigger fires only if the operational status changed to down (so it does not fire for permanently down interfaces).
+
+                    WARNING: if closed manually - it will not fire again on the next poll, because of the change check.
+                  manual_close: 'YES'
+                  tags:
+                    - tag: scope
+                      value: availability
+          trigger_prototypes:
+            - uuid: ec3ac4fb300845919da40c656296e3b3
+              expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.WARN:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.WARN:"{#IFNAME}"}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)<={$IF.UTIL.WARN:"{#IFNAME}"}-5 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)<={$IF.UTIL.WARN:"{#IFNAME}"}-5'
+              name: 'Interface {#IFNAME}({#IFALIAS}): High bandwidth utilization'
+              event_name: 'Interface {#IFNAME}({#IFALIAS}): High bandwidth utilization (>{$IF.UTIL.WARN:"{#IFNAME}"}%)'
+              opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE2}'
+              priority: WARNING
+              description: |
+                Inbound or outbound utilization over 5 minutes exceeds {$IF.UTIL.WARN:"{#IFNAME}"}%.
+                It recovers when both directions stay at least 5% below the threshold.
+              dependencies:
+                - name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization'
+                  expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"}'
+                - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: 6f747c76da5341039650c1647e533650
+              expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5'
+              name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization'
+              event_name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization (>{$IF.UTIL.CRIT:"{#IFNAME}"}%)'
+              opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE2}'
+              priority: HIGH
+              description: |
+                Inbound or outbound utilization over 5 minutes exceeds {$IF.UTIL.CRIT:"{#IFNAME}"}%.
+                It recovers when both directions stay at least 5% below the threshold.
+              dependencies:
+                - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: 8ef017197e8e4ffab19b1fbc6c5c54f6
+              expression: 'avg(/Extreme VOSS by SNMP/net.if.in.errors[{#IFNAME}],5m)>{$IF.ERRORS.WARN:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.errors[{#IFNAME}],5m)>{$IF.ERRORS.WARN:"{#IFNAME}"}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.errors[{#IFNAME}],5m)<={$IF.ERRORS.WARN:"{#IFNAME}"}-0.5 and avg(/Extreme VOSS by SNMP/net.if.out.errors[{#IFNAME}],5m)<={$IF.ERRORS.WARN:"{#IFNAME}"}-0.5'
+              name: 'Interface {#IFNAME}({#IFALIAS}): High error rate'
+              event_name: 'Interface {#IFNAME}({#IFALIAS}): High error rate (>{$IF.ERRORS.WARN:"{#IFNAME}"} eps)'
+              opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE2}'
+              priority: WARNING
+              description: |
+                Inbound or outbound error rate over 5 minutes exceeds {$IF.ERRORS.WARN:"{#IFNAME}"}.
+                It recovers when both directions stay below the threshold minus 0.5.
+              dependencies:
+                - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+              tags:
+                - tag: scope
+                  value: performance
+          graph_prototypes:
+            - uuid: e0d90ce0ce564bf98da9c8d2334a1d14
+              name: 'Interface {#IFNAME}({#IFALIAS}): Network traffic'
+              graph_items:
+                - drawtype: GRADIENT_LINE
+                  color: 199C0D
+                  item:
+                    host: 'Extreme VOSS by SNMP'
+                    key: 'net.if.in[{#IFNAME}]'
+                - sortorder: '1'
+                  drawtype: BOLD_LINE
+                  color: F63100
+                  item:
+                    host: 'Extreme VOSS by SNMP'
+                    key: 'net.if.out[{#IFNAME}]'
+          master_item:
+            key: net.if.walk
+          preprocessing:
+            - type: SNMP_WALK_TO_JSON
+              parameters:
+                - '{#IFOPERSTATUS}'
+                - 1.3.6.1.2.1.2.2.1.8
+                - '0'
+                - '{#IFADMINSTATUS}'
+                - 1.3.6.1.2.1.2.2.1.7
+                - '0'
+                - '{#IFALIAS}'
+                - 1.3.6.1.2.1.31.1.1.1.18
+                - '0'
+                - '{#IFNAME}'
+                - 1.3.6.1.2.1.31.1.1.1.1
+                - '0'
+                - '{#IFDESCR}'
+                - 1.3.6.1.2.1.2.2.1.2
+                - '0'
+                - '{#IFTYPE}'
+                - 1.3.6.1.2.1.2.2.1.3
+                - '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+      tags:
+        - tag: class
+          value: network
+        - tag: target
+          value: extreme
+        - tag: target
+          value: switch
+        - tag: target
+          value: voss
+      macros:
+        - macro: '{$CPU.UTIL.CRIT}'
+          value: '90'
+          description: 'Critical threshold of CPU utilization in % (5-minute average).'
+        - macro: '{$CPU.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold of CPU utilization in % (5-minute average).'
+        - macro: '{$EAPOLCONTROL}'
+          value: '1'
+          description: 'EAPOL / 802.1X triggers fire only where the context macro equals "1". Use {$EAPOLCONTROL:"{#SNMPINDEX}"}=0 to ignore a port.'
+        - macro: '{$ICMP.LOSS.WARN}'
+          value: '20'
+          description: 'Warning threshold of ICMP packet loss in %.'
+        - macro: '{$ICMP.RESPONSE.TIME.WARN}'
+          value: '0.15'
+          description: 'Warning threshold of ICMP response time in seconds.'
+        - macro: '{$IF.ERRORS.WARN}'
+          value: '2'
+          description: 'Warning threshold of interface error packet rate. Can be used with interface name as context.'
+        - macro: '{$IF.UTIL.CRIT}'
+          value: '95'
+          description: 'Critical threshold of interface bandwidth utilization in %. Can be used with interface name as context.'
+        - macro: '{$IF.UTIL.WARN}'
+          value: '90'
+          description: 'Warning threshold of interface bandwidth utilization in %. Can be used with interface name as context.'
+        - macro: '{$IFCONTROL}'
+          value: '1'
+          description: 'Link status trigger will be fired only for interfaces where the context macro equals "1".'
+        - macro: '{$ISISCONTROL}'
+          value: '1'
+          description: 'IS-IS circuit triggers fire only where the context macro equals "1". Use {$ISISCONTROL:"{#SNMPINDEX}"}=0 to ignore a circuit.'
+        - macro: '{$MEMORY.UTIL.CRIT}'
+          value: '90'
+          description: 'Critical threshold of memory utilization in % (10-minute average).'
+        - macro: '{$MEMORY.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold of memory utilization in % (10-minute average).'
+        - macro: '{$MLTCONTROL}'
+          value: '1'
+          description: 'LACP aggregation-down trigger fires only for MLTs where the context macro equals "1".'
+        - macro: '{$NET.IF.IFADMINSTATUS.MATCHES}'
+          value: .*
+          description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$NET.IF.IFADMINSTATUS.NOT_MATCHES}'
+          value: '^2$'
+          description: 'Ignore down(2) administrative status.'
+        - macro: '{$NET.IF.IFALIAS.MATCHES}'
+          value: .*
+          description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$NET.IF.IFALIAS.NOT_MATCHES}'
+          value: CHANGE_IF
+          description: 'Filters out interfaces with matching ifAlias. Used in network interface discovery.'
+        - macro: '{$NET.IF.IFDESCR.MATCHES}'
+          value: .*
+          description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$NET.IF.IFDESCR.NOT_MATCHES}'
+          value: CHANGE_IF
+          description: 'Filters out interfaces with matching ifDescr. Used in network interface discovery.'
+        - macro: '{$NET.IF.IFNAME.MATCHES}'
+          value: .*
+          description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$NET.IF.IFNAME.NOT_MATCHES}'
+          value: '^(Mgmt|lo|null|NULL|Nu|null.*|Loopback|loopback).*'
+          description: 'Filter out management and loopback-style interface names.'
+        - macro: '{$NET.IF.IFOPERSTATUS.MATCHES}'
+          value: .*
+          description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$NET.IF.IFOPERSTATUS.NOT_MATCHES}'
+          value: '^6$'
+          description: 'Ignore notPresent(6) operational status.'
+        - macro: '{$NET.IF.IFTYPE.MATCHES}'
+          value: '^(6|161)$'
+          description: 'Discover ethernetCsmacd(6) and ieee8023adLag(161) by default. Set to .* for all types.'
+        - macro: '{$NET.IF.IFTYPE.NOT_MATCHES}'
+          value: CHANGE_IF
+          description: 'Filters out interfaces by ifType. Used in network interface discovery.'
+        - macro: '{$NTP.REACHABLE.OK}'
+          value: Reachable
+          description: 'Expected healthy value of `rcNtpv4ServerReachable` (exact match). Override if your firmware uses a different string.'
+        - macro: '{$NTP.SYNC.PROBLEM.MATCHES}'
+          value: '(?i)^(rejected|discarded|not[\s-]?synchronized)'
+          description: 'Regexp for unhealthy `rcNtpv4ServerSynchronized` CLI strings. Candidate/Selected/sys.peer must not match.'
+        - macro: '{$PSU.STATUS.MATCHES}'
+          value: .*
+          description: 'This macro is used in power supply discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$PSU.STATUS.NOT_MATCHES}'
+          value: '^2$'
+          description: 'Ignore empty(2) power supply slots.'
+        - macro: '{$RADIUS.RETRIES.WARN}'
+          value: '0.1'
+          description: 'Warning threshold of RADIUS client retry rate (retries per second).'
+        - macro: '{$RADIUSCONTROL}'
+          value: '1'
+          description: 'RADIUS availability triggers fire only where the context macro equals "1". Use {$RADIUSCONTROL:"{#RADIUS.SERVER}"}=0 to ignore a server.'
+        - macro: '{$SNMP.TIMEOUT}'
+          value: 5m
+          description: 'Time without successful SNMP checks before the SNMP availability trigger fires.'
+      valuemaps:
+        - uuid: daaa8a894f074452b003d015f3140c17
+          name: 'IF-MIB::ifOperStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+            - value: '4'
+              newvalue: unknown
+            - value: '5'
+              newvalue: dormant
+            - value: '6'
+              newvalue: notPresent
+            - value: '7'
+              newvalue: lowerLayerDown
+        - uuid: 7b56609c9df2400dad519b79abf49cfe
+          name: 'Service state'
+          mappings:
+            - value: '0'
+              newvalue: Down
+            - value: '1'
+              newvalue: Up
+        - uuid: 98e2acd7e3ed435abb49d336b18d8c01
+          name: zabbix.host.available
+          mappings:
+            - value: '0'
+              newvalue: 'not available'
+            - value: '1'
+              newvalue: available
+            - value: '2'
+              newvalue: unknown
+        - uuid: efb95a1c0b8e4baca6c6d1f053a03e6c
+          name: 'RAPID-CITY::rcPortShutdownReason'
+          mappings:
+            - value: '1'
+              newvalue: none
+            - value: '2'
+              newvalue: cpLimit
+            - value: '3'
+              newvalue: macFlap
+            - value: '4'
+              newvalue: linkFlap
+            - value: '5'
+              newvalue: telnet
+            - value: '6'
+              newvalue: rLogin
+            - value: '7'
+              newvalue: console
+            - value: '8'
+              newvalue: ssh
+            - value: '9'
+              newvalue: modem
+            - value: '10'
+              newvalue: snmp
+            - value: '11'
+              newvalue: fdLimit
+            - value: '12'
+              newvalue: vlacp
+            - value: '13'
+              newvalue: slpp
+            - value: '14'
+              newvalue: smlt
+            - value: '15'
+              newvalue: lossless
+            - value: '16'
+              newvalue: invalidLossCfg
+            - value: '17'
+              newvalue: dpHeartBeat
+            - value: '18'
+              newvalue: ddmStatus
+            - value: '19'
+              newvalue: dupQsfpSerNum
+            - value: '20'
+              newvalue: bpduGuard
+            - value: '21'
+              newvalue: slppg
+            - value: '22'
+              newvalue: linkStateTracking
+            - value: '23'
+              newvalue: vlacpFlapDampening
+        - uuid: ca5cdbbc9d6a446eaef91a5d5c9f45ec
+          name: 'RAPID-CITY::rcVirtualIstSessionStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+        - uuid: 4769ac8807ad44a99d514251fed8a6e5
+          name: 'RAPID-CITY::rcVossSystemTemperatureStatus'
+          mappings:
+            - value: '1'
+              newvalue: normal
+            - value: '2'
+              newvalue: highWarning
+            - value: '3'
+              newvalue: highCritical
+        - uuid: 943e532cebc44a138795b57b38d8e5e8
+          name: 'RAPID-CITY::rcVossSystemFanInfoOperStatus'
+          mappings:
+            - value: '1'
+              newvalue: unknown
+            - value: '2'
+              newvalue: up
+            - value: '3'
+              newvalue: down
+            - value: '4'
+              newvalue: notPresent
+        - uuid: 18856779268e4814a477eacce568e4b5
+          name: 'RAPID-CITY::rcVossSystemFanInfoOperSpeed'
+          mappings:
+            - value: '1'
+              newvalue: low
+            - value: '2'
+              newvalue: medium
+            - value: '3'
+              newvalue: high
+        - uuid: 3b6b3867edbf477f8bba3607fa6a089c
+          name: 'RAPID-CITY::rcChasPowerSupplyOperStatus'
+          mappings:
+            - value: '1'
+              newvalue: unknown
+            - value: '2'
+              newvalue: empty
+            - value: '3'
+              newvalue: up
+            - value: '4'
+              newvalue: down
+        - uuid: f7e066fb9d354e0ea66f64dff9783e42
+          name: 'RAPID-CITY::rcSlppPortGuardStatus'
+          mappings:
+            - value: '1'
+              newvalue: none
+            - value: '2'
+              newvalue: monitoring
+            - value: '3'
+              newvalue: blocking
+        - uuid: d4760de5496442a6a68b9e5dcb3dff9e
+          name: 'RAPID-CITY::rcPortAutoSenseState'
+          mappings:
+            - value: '1'
+              newvalue: noAutoSense
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: wait
+            - value: '4'
+              newvalue: uni
+            - value: '5'
+              newvalue: nni
+            - value: '6'
+              newvalue: nniLoop
+            - value: '7'
+              newvalue: nniIsisUp
+            - value: '8'
+              newvalue: faProxyNoAuth
+            - value: '9'
+              newvalue: faWap
+            - value: '10'
+              newvalue: nniOnboarding
+            - value: '11'
+              newvalue: voice
+            - value: '12'
+              newvalue: faProxy
+            - value: '13'
+              newvalue: nniPending
+            - value: '14'
+              newvalue: sdWan
+            - value: '15'
+              newvalue: sdWanPending
+            - value: '16'
+              newvalue: faRing
+            - value: '19'
+              newvalue: nniAuthFail
+            - value: '20'
+              newvalue: nniMlt
+            - value: '21'
+              newvalue: nniMltIsisUp
+            - value: '22'
+              newvalue: nniMltOnboarding
+            - value: '23'
+              newvalue: nniMltAuthFail
+        - uuid: 7fa3f8d7ae35485b8f8e7508cd62763e
+          name: 'RAPID-CITY::EnableValue'
+          mappings:
+            - value: '1'
+              newvalue: enable
+            - value: '2'
+              newvalue: disable
+
+
+        - uuid: feb734934fb74f1fbf0b24fc01050fd3
+          name: 'RAPID-CITY::rcMltIstSessionStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+        - uuid: 3fe79a8c3616400b99e414efabfcd56d
+          name: 'RAPID-CITY::rcIsisCircuitOperState'
+          mappings:
+            - value: '0'
+              newvalue: unknown
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+        - uuid: fdd9215301b3458289528c207bcb9140
+          name: 'RAPID-CITY::rcIsisCircuitType'
+          mappings:
+            - value: '1'
+              newvalue: bcast
+            - value: '2'
+              newvalue: ptpt
+            - value: '3'
+              newvalue: passive
+        - uuid: 8e35372608964660b548055c98aee5de
+          name: 'IEEE8021-PAE-MIB::PaeControlledPortStatus'
+          mappings:
+            - value: '1'
+              newvalue: authorized
+            - value: '2'
+              newvalue: unauthorized
+        - uuid: fe1e2575c81844b19a8821bc8c89e5e0
+          name: 'IEEE8021-PAE-MIB::dot1xAuthPaeState'
+          mappings:
+            - value: '1'
+              newvalue: initialize
+            - value: '2'
+              newvalue: disconnected
+            - value: '3'
+              newvalue: connecting
+            - value: '4'
+              newvalue: authenticating
+            - value: '5'
+              newvalue: authenticated
+            - value: '6'
+              newvalue: aborting
+            - value: '7'
+              newvalue: held
+            - value: '8'
+              newvalue: forceAuth
+            - value: '9'
+              newvalue: forceUnauth
+        - uuid: ebbcb1eae5ec4b739cd178a72399e2fa
+          name: 'IEEE8021-PAE-MIB::dot1xAuthBackendAuthState'
+          mappings:
+            - value: '1'
+              newvalue: request
+            - value: '2'
+              newvalue: response
+            - value: '3'
+              newvalue: success
+            - value: '4'
+              newvalue: fail
+            - value: '5'
+              newvalue: timeout
+            - value: '6'
+              newvalue: idle
+            - value: '7'
+              newvalue: initialize
