@@ -1709,6 +1709,7 @@ zabbix_export:
                   dependencies:
                     - name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization'
                       expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.CRIT}'
+                      recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)<={$CPU.UTIL.CRIT}-5'
                   tags:
                     - tag: scope
                       value: performance
@@ -1761,6 +1762,7 @@ zabbix_export:
                   dependencies:
                     - name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization'
                       expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.CRIT}'
+                      recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)<={$MEMORY.UTIL.CRIT}-5'
                   tags:
                     - tag: scope
                       value: capacity
@@ -2500,8 +2502,10 @@ zabbix_export:
               dependencies:
                 - name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization'
                   expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"}'
+                  recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5'
                 - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
                   expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
               tags:
                 - tag: scope
                   value: performance
@@ -2519,6 +2523,7 @@ zabbix_export:
               dependencies:
                 - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
                   expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
               tags:
                 - tag: scope
                   value: performance
@@ -2536,6 +2541,7 @@ zabbix_export:
               dependencies:
                 - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
                   expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
+                  recovery_expression: 'last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
               tags:
                 - tag: scope
                   value: performance
