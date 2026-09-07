@@ -12,6 +12,8 @@ zabbix_export:
 
         Monitoring of Extreme Networks VOSS / Fabric Engine switches via SNMPv2c or SNMPv3.
 
+        Homepage: https://github.com/0lini/community-templates/tree/main/Network_Devices/eXtreme/template_extreme_voss
+
         MIBs used:
         RAPID-CITY
         ENTITY-MIB
@@ -25,15 +27,20 @@ zabbix_export:
 
         OID reference: VOSS 9.4.1 MIBs.
 
+        Version: 1.1.0
+        Changelog:
+        - 1.1.0: Align with official Zabbix template conventions; label NTP peers by IP when hostname is Unknown.
+        - 1.0.0: Initial Zabbix 7.4 template.
+
         Author: Jon McLaughlin
       groups:
         - name: 'Templates/Network devices'
       items:
         - uuid: 3d3f99531f5c4b7bba80b3bb3af2da7a
-          name: 'Extreme VOSS: ICMP ping'
+          name: 'ICMP ping'
           type: SIMPLE
           key: icmpping
-          history: 1w
+          history: 7d
           trends: '0'
           description: 'The host ICMP availability. Primary availability check.'
           valuemap:
@@ -41,6 +48,8 @@ zabbix_export:
           tags:
             - tag: component
               value: health
+            - tag: component
+              value: network
           triggers:
             - uuid: 31613162065a41e5b7dc8bfcba59e71a
               expression: 'max(/Extreme VOSS by SNMP/icmpping,#3)=0'
@@ -51,16 +60,18 @@ zabbix_export:
                 - tag: scope
                   value: availability
         - uuid: 0dde99b52f034319b00127c63e469df1
-          name: 'Extreme VOSS: ICMP loss'
+          name: 'ICMP loss'
           type: SIMPLE
           key: icmppingloss
-          history: 1w
+          history: 7d
           value_type: FLOAT
           units: '%'
           description: 'The ICMP packet loss in percent.'
           tags:
             - tag: component
               value: health
+            - tag: component
+              value: network
           triggers:
             - uuid: 4e85fce1b35640329d5c6721fd953d99
               expression: 'min(/Extreme VOSS by SNMP/icmppingloss,5m)>{$ICMP.LOSS.WARN} and min(/Extreme VOSS by SNMP/icmppingloss,5m)<100'
@@ -78,16 +89,18 @@ zabbix_export:
                 - tag: scope
                   value: performance
         - uuid: e6ee615d5f354406bc9154f44585ee39
-          name: 'Extreme VOSS: ICMP response time'
+          name: 'ICMP response time'
           type: SIMPLE
           key: icmppingsec
-          history: 1w
+          history: 7d
           value_type: FLOAT
           units: s
           description: 'The ICMP echo response time.'
           tags:
             - tag: component
               value: health
+            - tag: component
+              value: network
           triggers:
             - uuid: 77636fd6f18d49a3a8e503b455ac41a8
               expression: 'avg(/Extreme VOSS by SNMP/icmppingsec,5m)>{$ICMP.RESPONSE.TIME.WARN}'
@@ -107,7 +120,7 @@ zabbix_export:
                 - tag: scope
                   value: performance
         - uuid: 831d193d2bab4f9a835ba3433dd18727
-          name: 'Extreme VOSS: SNMP agent availability'
+          name: 'SNMP agent availability'
           type: INTERNAL
           key: 'zabbix[host,snmp,available]'
           history: 7d
@@ -133,7 +146,7 @@ zabbix_export:
                 - tag: scope
                   value: availability
         - uuid: 3b53222520694a1b905ccae31578e446
-          name: 'Extreme VOSS: SNMP walk KHI slot performance'
+          name: 'SNMP walk KHI slot performance'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.85.10.1.1.2,1.3.6.1.4.1.2272.1.85.10.1.1.6,1.3.6.1.4.1.2272.1.85.10.1.1.7,1.3.6.1.4.1.2272.1.85.10.1.1.8]'
           key: extreme.khi.slot.walk
@@ -148,7 +161,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: 1c0bcca0ad7b4321b335fe5a2b7f802b
-          name: 'Extreme VOSS: SNMP walk network interfaces'
+          name: 'SNMP walk network interfaces'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.2.1.2.2.1.8,1.3.6.1.2.1.2.2.1.7,1.3.6.1.2.1.31.1.1.1.18,1.3.6.1.2.1.31.1.1.1.1,1.3.6.1.2.1.2.2.1.2,1.3.6.1.2.1.2.2.1.3,1.3.6.1.2.1.31.1.1.1.6,1.3.6.1.2.1.31.1.1.1.10,1.3.6.1.2.1.2.2.1.14,1.3.6.1.2.1.2.2.1.20,1.3.6.1.2.1.2.2.1.19,1.3.6.1.2.1.2.2.1.13,1.3.6.1.2.1.31.1.1.1.15]'
           key: net.if.walk
@@ -163,7 +176,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: a312ec2db65749419aaba5ff61e193b9
-          name: 'Extreme VOSS: SNMP walk ENTITY-MIB'
+          name: 'SNMP walk ENTITY-MIB'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.2.1.47.1.1.1.1.5,1.3.6.1.2.1.47.1.1.1.1.11,1.3.6.1.2.1.47.1.1.1.1.13,1.3.6.1.2.1.47.1.1.1.1.9]'
           key: system.hw.entities.walk
@@ -178,7 +191,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: 0072445a705e4b3d83b9266e0cd2f3cc
-          name: 'Extreme VOSS: SNMP walk temperature sensors'
+          name: 'SNMP walk temperature sensors'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.101.1.1.2.1.2,1.3.6.1.4.1.2272.1.101.1.1.2.1.3,1.3.6.1.4.1.2272.1.101.1.1.2.1.4,1.3.6.1.4.1.2272.1.101.1.1.2.1.5,1.3.6.1.4.1.2272.1.101.1.1.2.1.6]'
           key: extreme.temp.walk
@@ -193,7 +206,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: 897aead9e7bd463eb3b12ab1d82cf89e
-          name: 'Extreme VOSS: SNMP walk fans'
+          name: 'SNMP walk fans'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.101.1.1.4.1.3,1.3.6.1.4.1.2272.1.101.1.1.4.1.4,1.3.6.1.4.1.2272.1.101.1.1.4.1.5,1.3.6.1.4.1.2272.1.101.1.1.4.1.6]'
           key: extreme.fan.walk
@@ -208,7 +221,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: f9d949bcb24d478f9de5f2b6de56dce0
-          name: 'Extreme VOSS: SNMP walk power supplies'
+          name: 'SNMP walk power supplies'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.4.8.1.1.2]'
           key: extreme.psu.walk
@@ -223,7 +236,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: 943b258f29ea4db2b8050373197d55f2
-          name: 'Extreme VOSS: System description'
+          name: 'System description'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.1.0]'
           key: 'system.descr[sysDescr.0]'
@@ -243,7 +256,7 @@ zabbix_export:
             - tag: component
               value: system
         - uuid: 65ee895c9d83492eb12fcdd3fb20c443
-          name: 'Extreme VOSS: System name'
+          name: 'System name'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.5.0]'
           key: 'system.name[sysName.0]'
@@ -263,7 +276,7 @@ zabbix_export:
             - tag: component
               value: system
         - uuid: 1d35aaa6d18e4b1c8c68dd0d64a3816d
-          name: 'Extreme VOSS: System location'
+          name: 'System location'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.6.0]'
           key: 'system.location[sysLocation.0]'
@@ -283,7 +296,7 @@ zabbix_export:
             - tag: component
               value: system
         - uuid: a0e84b68303b402785030986c55a7b74
-          name: 'Extreme VOSS: System uptime'
+          name: 'System uptime'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.3.0]'
           key: 'system.uptime[sysUpTime.0]'
@@ -313,7 +326,7 @@ zabbix_export:
                 - tag: scope
                   value: notice
         - uuid: ec347a0b208a4241a6bbb7b3cc67c0fc
-          name: 'Extreme VOSS: SNMP walk Virtual IST'
+          name: 'SNMP walk Virtual IST'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.211.1,1.3.6.1.4.1.2272.1.211.3]'
           key: extreme.vist.walk
@@ -329,7 +342,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: 4d0b59d7c17646db84faf6311d5c2daa
-          name: 'Extreme VOSS: SNMP walk SLPP Guard'
+          name: 'SNMP walk SLPP Guard'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.64.1.1.3.1.8,1.3.6.1.4.1.2272.1.64.1.1.3.1.10,1.3.6.1.4.1.2272.1.64.1.1.3.1.9,1.3.6.1.4.1.2272.1.64.1.1.3.1.11,1.3.6.1.4.1.2272.1.64.1.1.3.1.7]'
           key: extreme.slpp.guard.walk
@@ -344,7 +357,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: b1312dec0be04098ab0fdec576ea0cc2
-          name: 'Extreme VOSS: SNMP walk rcPort (BPDU Guard / Auto-Sense)'
+          name: 'SNMP walk rcPort (BPDU Guard / Auto-Sense)'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.4.10.1.1.119,1.3.6.1.4.1.2272.1.4.10.1.1.114,1.3.6.1.4.1.2272.1.4.10.1.1.117,1.3.6.1.4.1.2272.1.4.10.1.1.118,1.3.6.1.4.1.2272.1.4.10.1.1.130,1.3.6.1.4.1.2272.1.4.10.1.1.134,1.3.6.1.2.1.31.1.1.1.1]'
           key: extreme.rcport.walk
@@ -360,7 +373,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: b9b9ca4ad1e44dd6b9a88f8e0f177a95
-          name: 'Extreme VOSS: SNMP walk EAPOL / 802.1X'
+          name: 'SNMP walk EAPOL / 802.1X'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.0.8802.1.1.1.1.2.1.1.6,1.0.8802.1.1.1.1.2.1.1.5,1.0.8802.1.1.1.1.2.1.1.1,1.0.8802.1.1.1.1.2.1.1.2]'
           key: extreme.eapol.walk
@@ -376,7 +389,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: c0e5c1b1ff134649bbd0446d5b7fd9a7
-          name: 'Extreme VOSS: SNMP walk MLT'
+          name: 'SNMP walk MLT'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.17.10.1.2,1.3.6.1.4.1.2272.1.17.10.1.8,1.3.6.1.4.1.2272.1.17.10.1.18,1.3.6.1.4.1.2272.1.17.10.1.22]'
           key: extreme.mlt.walk
@@ -391,7 +404,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: b5038d811e7c4e2289808131a2ec8174
-          name: 'Extreme VOSS: SNMP walk classic IST'
+          name: 'SNMP walk classic IST'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.17.3,1.3.6.1.4.1.2272.1.17.4]'
           key: extreme.ist.walk
@@ -406,7 +419,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: ebb3d4c6af224801a4c7491abe388491
-          name: 'Extreme VOSS: SNMP walk IS-IS circuits'
+          name: 'SNMP walk IS-IS circuits'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.63.2.1.2,1.3.6.1.4.1.2272.1.63.2.1.8,1.3.6.1.4.1.2272.1.63.2.1.9,1.3.6.1.4.1.2272.1.63.2.1.10]'
           key: extreme.isis.circuit.walk
@@ -421,7 +434,7 @@ zabbix_export:
             - tag: component
               value: raw
         - uuid: f930f7ecc5ec4099b351f63df37f9ead
-          name: 'Extreme VOSS: SNMP walk NTP'
+          name: 'SNMP walk NTP'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.33.4.1.3,1.3.6.1.4.1.2272.1.33.4.1.12,1.3.6.1.4.1.2272.1.33.4.1.13,1.3.6.1.4.1.2272.1.33.4.1.22]'
           key: extreme.ntp.walk
@@ -431,12 +444,15 @@ zabbix_export:
           value_type: TEXT
           description: |
             MIB: RAPID-CITY
-            Scanning of NTPv4 server table (enable, synchronized, reachable, hostname).
+            Scanning of `RAPID-CITY::rcNtpv4ServerTable`
+            (enable, synchronized, reachable, hostname).
+            Hostname is often `Unknown` when the server is configured by IP;
+            discovery then labels the peer from the InetAddress index.
           tags:
             - tag: component
               value: raw
         - uuid: d58463461aac4b20a8d908c78aedc687
-          name: 'Extreme VOSS: SNMP walk RADIUS servers'
+          name: 'SNMP walk RADIUS servers'
           type: SNMP_AGENT
           snmp_oid: 'walk[1.3.6.1.4.1.2272.1.29.5.1.6,1.3.6.1.4.1.2272.1.29.5.1.14,1.3.6.1.4.1.2272.1.29.5.1.15,1.3.6.1.4.1.2272.1.29.5.1.28]'
           key: extreme.radius.walk
@@ -452,7 +468,7 @@ zabbix_export:
               value: raw
       discovery_rules:
         - uuid: 7db383e948b8448cb43bf678ad295cc9
-          name: 'Extreme VOSS: Virtual IST discovery'
+          name: 'Virtual IST discovery'
           type: DEPENDENT
           key: extreme.vist.discovery
           delay: '0'
@@ -466,7 +482,7 @@ zabbix_export:
             Standalone switches without vIST create no items or triggers.
           item_prototypes:
             - uuid: 24de6d9bef5d415383b4b88cc2e04db6
-              name: 'Extreme VOSS: vIST session status'
+              name: 'vIST session status'
               type: DEPENDENT
               key: 'extreme.vist.session.status[{#SNMPINDEX}]'
               delay: '0'
@@ -512,7 +528,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: fd29f43774174cd2a1145f69dca8984d
-          name: 'Extreme VOSS: SLPP Guard discovery'
+          name: 'SLPP Guard discovery'
           type: DEPENDENT
           key: extreme.slpp.guard.discovery
           delay: '0'
@@ -524,7 +540,7 @@ zabbix_export:
           description: 'Discovering SLPP Guard-enabled ports from `RAPID-CITY::rcSlppPortTable`.'
           item_prototypes:
             - uuid: 7a8e2db3edf44fd7b8f0ba789444f582
-              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Status'
+              name: 'SLPP Guard {#SNMPINDEX}: Status'
               type: DEPENDENT
               key: 'extreme.slpp.guard.status[{#SNMPINDEX}]'
               delay: '0'
@@ -563,7 +579,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: b5c26e27804047e38d66df8a4ef78f18
-              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Timer'
+              name: 'SLPP Guard {#SNMPINDEX}: Timer'
               type: DEPENDENT
               key: 'extreme.slpp.guard.timer[{#SNMPINDEX}]'
               delay: '0'
@@ -587,7 +603,7 @@ zabbix_export:
                 - tag: interface
                   value: '{#SNMPINDEX}'
             - uuid: f79d199ddc464b6dac51997f6ebbeb46
-              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Timeout'
+              name: 'SLPP Guard {#SNMPINDEX}: Timeout'
               type: DEPENDENT
               key: 'extreme.slpp.guard.timeout[{#SNMPINDEX}]'
               delay: '0'
@@ -613,7 +629,7 @@ zabbix_export:
                 - tag: interface
                   value: '{#SNMPINDEX}'
             - uuid: 2b68071ef37344c5b9789a234e577629
-              name: 'Extreme VOSS: SLPP Guard {#SNMPINDEX}: Packets received'
+              name: 'SLPP Guard {#SNMPINDEX}: Packets received'
               type: DEPENDENT
               key: 'extreme.slpp.guard.pkts[{#SNMPINDEX}]'
               delay: '0'
@@ -649,7 +665,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 50890aa6817242048ccb3476380103a8
-          name: 'Extreme VOSS: BPDU Guard discovery'
+          name: 'BPDU Guard discovery'
           type: DEPENDENT
           key: extreme.bpdu.guard.discovery
           delay: '0'
@@ -661,7 +677,7 @@ zabbix_export:
           description: 'Discovering BPDU Guard-enabled ports from `RAPID-CITY::rcPortTable`.'
           item_prototypes:
             - uuid: c69e42080cfd4833b37a1e97aeeb5c31
-              name: 'Extreme VOSS: BPDU Guard {#IFNAME}: Shutdown reason'
+              name: 'BPDU Guard {#IFNAME}: Shutdown reason'
               type: DEPENDENT
               key: 'extreme.bpdu.guard.shutdown.reason[{#SNMPINDEX}]'
               delay: '0'
@@ -702,7 +718,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 8286d7fb22b74548999a19f82b578527
-              name: 'Extreme VOSS: BPDU Guard {#IFNAME}: Timer count'
+              name: 'BPDU Guard {#IFNAME}: Timer count'
               type: DEPENDENT
               key: 'extreme.bpdu.guard.timer[{#SNMPINDEX}]'
               delay: '0'
@@ -727,7 +743,7 @@ zabbix_export:
                 - tag: interface
                   value: '{#IFNAME}'
             - uuid: b211a59755f0413bae047a7e974c706c
-              name: 'Extreme VOSS: BPDU Guard {#IFNAME}: Timeout'
+              name: 'BPDU Guard {#IFNAME}: Timeout'
               type: DEPENDENT
               key: 'extreme.bpdu.guard.timeout[{#SNMPINDEX}]'
               delay: '0'
@@ -768,7 +784,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: bf45089e494d427ebe5f8d91394e8501
-          name: 'Extreme VOSS: Auto-Sense discovery'
+          name: 'Auto-Sense discovery'
           type: DEPENDENT
           key: extreme.autosense.discovery
           delay: '0'
@@ -780,7 +796,7 @@ zabbix_export:
           description: 'Discovering Auto-Sense-enabled ports from `RAPID-CITY::rcPortTable`.'
           item_prototypes:
             - uuid: 39705dcdd075417381159fdaf1598e34
-              name: 'Extreme VOSS: Auto-Sense {#IFNAME}: State'
+              name: 'Auto-Sense {#IFNAME}: State'
               type: DEPENDENT
               key: 'extreme.autosense.state[{#SNMPINDEX}]'
               delay: '0'
@@ -843,7 +859,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: f6c22c24e9664aeeb861df60e6b70e21
-          name: 'Extreme VOSS: EAPOL / 802.1X discovery'
+          name: 'EAPOL / 802.1X discovery'
           type: DEPENDENT
           key: extreme.eapol.discovery
           delay: '0'
@@ -857,7 +873,7 @@ zabbix_export:
             forceAuthorized / forceUnauthorized ports are skipped.
           item_prototypes:
             - uuid: 4f759abf8cde411298b49811db9f4bb8
-              name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Port status'
+              name: 'EAPOL {#SNMPINDEX}: Port status'
               type: DEPENDENT
               key: 'extreme.eapol.port.status[{#SNMPINDEX}]'
               delay: '0'
@@ -882,7 +898,7 @@ zabbix_export:
                 - tag: interface
                   value: '{#SNMPINDEX}'
             - uuid: 1d4a98fcf3934912b59f91a026b0ef05
-              name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: PAE state'
+              name: 'EAPOL {#SNMPINDEX}: PAE state'
               type: DEPENDENT
               key: 'extreme.eapol.pae.state[{#SNMPINDEX}]'
               delay: '0'
@@ -935,7 +951,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 9383d845ba39415186d959ba8363420c
-              name: 'Extreme VOSS: EAPOL {#SNMPINDEX}: Backend state'
+              name: 'EAPOL {#SNMPINDEX}: Backend state'
               type: DEPENDENT
               key: 'extreme.eapol.backend.state[{#SNMPINDEX}]'
               delay: '0'
@@ -985,7 +1001,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 0e8a22c081534617b92c8ee3bdbefa31
-          name: 'Extreme VOSS: MLT discovery'
+          name: 'MLT discovery'
           type: DEPENDENT
           key: extreme.mlt.discovery
           delay: '0'
@@ -999,7 +1015,7 @@ zabbix_export:
             Covers static MLT and LACP (aggregatable) trunks, including SMLT / IST types.
           item_prototypes:
             - uuid: 0994c71dbe5a4b059f88519841c997ed
-              name: 'Extreme VOSS: MLT {#MLT.NAME} ({#SNMPINDEX}): Aggregation state'
+              name: 'MLT {#MLT.NAME} ({#SNMPINDEX}): Aggregation state'
               type: DEPENDENT
               key: 'extreme.mlt.agg.state[{#SNMPINDEX}]'
               delay: '0'
@@ -1039,7 +1055,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: c98c24f30cac48848e912ed0c318b8d8
-              name: 'Extreme VOSS: MLT {#MLT.NAME} ({#SNMPINDEX}): Aggregatable'
+              name: 'MLT {#MLT.NAME} ({#SNMPINDEX}): Aggregatable'
               type: DEPENDENT
               key: 'extreme.mlt.aggregatable[{#SNMPINDEX}]'
               delay: '0'
@@ -1077,7 +1093,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: b662da558c15460bb8ef73f858b7b0f1
-          name: 'Extreme VOSS: Classic IST discovery'
+          name: 'Classic IST discovery'
           type: DEPENDENT
           key: extreme.ist.discovery
           delay: '0'
@@ -1091,7 +1107,7 @@ zabbix_export:
             Distinct from Virtual IST (`rcVirtualIst*`).
           item_prototypes:
             - uuid: 733e80a7175642adbff7db0b3cbb08b2
-              name: 'Extreme VOSS: Classic IST session status'
+              name: 'Classic IST session status'
               type: DEPENDENT
               key: 'extreme.ist.session.status[{#SNMPINDEX}]'
               delay: '0'
@@ -1137,7 +1153,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: eeda8eb1cbe3451ab71245c6784d28b6
-          name: 'Extreme VOSS: IS-IS circuit discovery'
+          name: 'IS-IS circuit discovery'
           type: DEPENDENT
           key: extreme.isis.circuit.discovery
           delay: '0'
@@ -1146,7 +1162,7 @@ zabbix_export:
             Empty on switches without IS-IS (no fabric NNI / SPBM circuits).
           item_prototypes:
             - uuid: 01130db0470844c19fedb37479a50734
-              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Oper state'
+              name: 'IS-IS circuit {#SNMPINDEX}: Oper state'
               type: DEPENDENT
               key: 'extreme.isis.circuit.oper[{#SNMPINDEX}]'
               delay: '0'
@@ -1186,7 +1202,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 3f0bdad6cdff4d63a48586006c2bcaab
-              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Adjacencies up'
+              name: 'IS-IS circuit {#SNMPINDEX}: Adjacencies up'
               type: DEPENDENT
               key: 'extreme.isis.circuit.adj.up[{#SNMPINDEX}]'
               delay: '0'
@@ -1223,7 +1239,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 93ebc11d5e4841e786d22ed4c02f2c0f
-              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Adjacencies'
+              name: 'IS-IS circuit {#SNMPINDEX}: Adjacencies'
               type: DEPENDENT
               key: 'extreme.isis.circuit.adj[{#SNMPINDEX}]'
               delay: '0'
@@ -1245,7 +1261,7 @@ zabbix_export:
                 - tag: circuit
                   value: '{#SNMPINDEX}'
             - uuid: 554bb2386f4d4622be4b31a1fb7e9eda
-              name: 'Extreme VOSS: IS-IS circuit {#SNMPINDEX}: Type'
+              name: 'IS-IS circuit {#SNMPINDEX}: Type'
               type: DEPENDENT
               key: 'extreme.isis.circuit.type[{#SNMPINDEX}]'
               delay: '0'
@@ -1280,7 +1296,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 0eed5d523a9d4f5cb7d6d47ab01c10af
-          name: 'Extreme VOSS: NTP server discovery'
+          name: 'NTP server discovery'
           type: DEPENDENT
           key: extreme.ntp.discovery
           delay: '0'
@@ -1289,10 +1305,15 @@ zabbix_export:
               - macro: '{#NTP.ENABLE}'
                 value: '^1$'
                 formulaid: A
-          description: 'Discovering enabled NTPv4 servers from RAPID-CITY.'
+          description: |
+            Discovering enabled NTPv4 servers from `RAPID-CITY::rcNtpv4ServerTable`.
+            `{#NTP.HOSTNAME}` is `rcNtpv4ServerHostname` when it is a real name;
+            otherwise the IPv4/IPv6/DNS address from the table index
+            (`rcNtpv4ServerAddressType` + `rcNtpv4ServerAddress`).
+            VOSS typically returns hostname `Unknown` for IP-configured peers.
           item_prototypes:
             - uuid: 779a1ae23d93435e88ac88e4e4e11478
-              name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Sync status'
+              name: 'NTP {#NTP.HOSTNAME}: Sync status'
               type: DEPENDENT
               key: 'extreme.ntp.synchronized[{#SNMPINDEX}]'
               delay: '0'
@@ -1332,7 +1353,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 40632afe7a434a3d9cda0b13df0062b2
-              name: 'Extreme VOSS: NTP {#NTP.HOSTNAME}: Reachable'
+              name: 'NTP {#NTP.HOSTNAME}: Reachable'
               type: DEPENDENT
               key: 'extreme.ntp.reachable[{#SNMPINDEX}]'
               delay: '0'
@@ -1380,18 +1401,67 @@ zabbix_export:
             - type: JAVASCRIPT
               parameters:
                 - |
+                  function formatIpv6(octets) {
+                    var groups = [];
+                    for (var i = 0; i < 16; i += 2) {
+                      groups.push(((octets[i] << 8) | octets[i + 1]).toString(16));
+                    }
+                    return groups.join(':');
+                  }
+                  function formatAddr(type, octets) {
+                    if ((type === 1 || type === 3) && octets.length >= 4) {
+                      return octets.slice(0, 4).join('.');
+                    }
+                    if ((type === 2 || type === 4) && octets.length >= 16) {
+                      return formatIpv6(octets.slice(0, 16));
+                    }
+                    if (type === 16 && octets.length) {
+                      var s = '';
+                      for (var i = 0; i < octets.length; i++) {
+                        if (octets[i] >= 32 && octets[i] < 127) {
+                          s += String.fromCharCode(octets[i]);
+                        }
+                      }
+                      return s || null;
+                    }
+                    return null;
+                  }
+                  function parseInetIndex(idx) {
+                    var parts = String(idx).split('.');
+                    var type = parseInt(parts[0], 10);
+                    if (isNaN(type) || parts.length < 2) {
+                      return idx;
+                    }
+                    var len = parseInt(parts[1], 10);
+                    if (!isNaN(len) && len >= 0 && parts.length >= 2 + len) {
+                      var octets = parts.slice(2, 2 + len).map(function (x) { return parseInt(x, 10); });
+                      var formatted = formatAddr(type, octets);
+                      if (formatted) {
+                        return formatted;
+                      }
+                    }
+                    if (type === 1 && parts.length >= 5) {
+                      return parts.slice(1, 5).join('.');
+                    }
+                    if (type === 2 && parts.length >= 17) {
+                      return formatIpv6(parts.slice(1, 17).map(function (x) { return parseInt(x, 10); }));
+                    }
+                    return idx;
+                  }
                   var rows = JSON.parse(value);
                   return JSON.stringify(rows.map(function (r) {
-                    if (!r['{#NTP.HOSTNAME}']) {
-                      r['{#NTP.HOSTNAME}'] = r['{#SNMPINDEX}'];
+                    var host = String(r['{#NTP.HOSTNAME}'] || '').replace(/^\s+|\s+$/g, '');
+                    if (!host || /^(unknown|-|n\/a)$/i.test(host)) {
+                      host = parseInetIndex(r['{#SNMPINDEX}']);
                     }
+                    r['{#NTP.HOSTNAME}'] = host;
                     return r;
                   }));
             - type: DISCARD_UNCHANGED_HEARTBEAT
               parameters:
                 - 1h
         - uuid: 7364dcdcb9544068ad44ccb2965be3c8
-          name: 'Extreme VOSS: RADIUS server discovery'
+          name: 'RADIUS server discovery'
           type: DEPENDENT
           key: extreme.radius.discovery
           delay: '0'
@@ -1406,7 +1476,7 @@ zabbix_export:
             (cli/snmp/eap/web/endpointTracking).
           item_prototypes:
             - uuid: 206e6fb398ca492dbe19774d3b8cfcf2
-              name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Round-trip time'
+              name: 'RADIUS {#RADIUS.SERVER}: Round-trip time'
               type: DEPENDENT
               key: 'extreme.radius.rtt[{#SNMPINDEX}]'
               delay: '0'
@@ -1432,7 +1502,7 @@ zabbix_export:
                 - tag: used-by
                   value: '{#RADIUS.USEDBY}'
             - uuid: 997facdae9bf4da29ba89c88b199bbc0
-              name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Pending requests'
+              name: 'RADIUS {#RADIUS.SERVER}: Pending requests'
               type: DEPENDENT
               key: 'extreme.radius.pending[{#SNMPINDEX}]'
               delay: '0'
@@ -1468,7 +1538,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: f89c4f4df65c48a8a35055ed5ce7cfc7
-              name: 'Extreme VOSS: RADIUS {#RADIUS.SERVER}: Client retries'
+              name: 'RADIUS {#RADIUS.SERVER}: Client retries'
               type: DEPENDENT
               key: 'extreme.radius.retries[{#SNMPINDEX}]'
               delay: '0'
@@ -1559,7 +1629,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 36abfe98168841c5a9566573c97a4416
-          name: 'Extreme VOSS: Chassis inventory discovery'
+          name: 'Chassis inventory discovery'
           type: DEPENDENT
           key: system.hw.chassis.discovery
           delay: '0'
@@ -1571,7 +1641,7 @@ zabbix_export:
           description: 'Discovering chassis entities (entPhysicalClass = chassis) from ENTITY-MIB.'
           item_prototypes:
             - uuid: c4833119de1f4b53b872a7216af08698
-              name: 'Extreme VOSS: Hardware serial number'
+              name: 'Hardware serial number'
               type: DEPENDENT
               key: 'system.hw.serialnumber[{#SNMPINDEX}]'
               delay: '0'
@@ -1595,7 +1665,7 @@ zabbix_export:
                 - tag: component
                   value: inventory
             - uuid: 424c57662bfa4588a2a33965c23c42bc
-              name: 'Extreme VOSS: Hardware model name'
+              name: 'Hardware model name'
               type: DEPENDENT
               key: 'system.hw.model[{#SNMPINDEX}]'
               delay: '0'
@@ -1619,7 +1689,7 @@ zabbix_export:
                 - tag: component
                   value: inventory
             - uuid: 525bb6816a4b4ac885a9ec6883177ef9
-              name: 'Extreme VOSS: Firmware version'
+              name: 'Firmware version'
               type: DEPENDENT
               key: 'system.hw.firmware[{#SNMPINDEX}]'
               delay: '0'
@@ -1654,14 +1724,14 @@ zabbix_export:
               parameters:
                 - 1d
         - uuid: 3bdf69e29fdf47af8efeb4d722a7b93a
-          name: 'Extreme VOSS: KHI slot discovery'
+          name: 'KHI slot discovery'
           type: DEPENDENT
           key: extreme.khi.slot.discovery
           delay: '0'
           description: 'Discovering CPU and memory slots from `RAPID-CITY::rcKhiSlotPerfTable`.'
           item_prototypes:
             - uuid: a55f58f5462e467d9090a67a148aeb4f
-              name: 'Extreme VOSS: Slot {#SNMPINDEX}: CPU utilization'
+              name: 'Slot {#SNMPINDEX}: CPU utilization'
               type: DEPENDENT
               key: 'extreme.cpu.util[{#SNMPINDEX}]'
               delay: '0'
@@ -1685,36 +1755,18 @@ zabbix_export:
                 - tag: slot
                   value: '{#SNMPINDEX}'
               trigger_prototypes:
-                - uuid: b275786f65a9454c8d7d04a10bb28e4f
-                  expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.CRIT}'
-                  recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)<={$CPU.UTIL.CRIT}-5'
-                  name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization'
-                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization (>{$CPU.UTIL.CRIT}%)'
-                  opdata: 'Avg 5m: {ITEM.LASTVALUE1}'
-                  priority: HIGH
-                  description: 'Average CPU utilization over 5 minutes exceeds {$CPU.UTIL.CRIT}%. It recovers when utilization stays at least 5% below the threshold.'
-                  tags:
-                    - tag: scope
-                      value: performance
                 - uuid: 6e18162dbf6a4f80bf31cb41898541f7
-                  expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.WARN}'
-                  recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)<={$CPU.UTIL.WARN}-5'
+                  expression: 'min(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.CRIT:"{#SNMPINDEX}"}'
                   name: 'Extreme VOSS: Slot {#SNMPINDEX}: High CPU utilization'
-                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: High CPU utilization (>{$CPU.UTIL.WARN}%)'
-                  opdata: 'Avg 5m: {ITEM.LASTVALUE1}'
+                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: High CPU utilization (over {$CPU.UTIL.CRIT:"{#SNMPINDEX}"}% for 5m)'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
                   priority: WARNING
-                  description: 'Average CPU utilization over 5 minutes exceeds {$CPU.UTIL.WARN}%. It recovers when utilization stays at least 5% below the threshold.'
-                  dependencies:
-                    - name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical CPU utilization'
-                      expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)>{$CPU.UTIL.CRIT}'
-                      recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.cpu.util[{#SNMPINDEX}],5m)<={$CPU.UTIL.CRIT}-5'
+                  description: 'The CPU utilization is too high. The system might be slow to respond.'
                   tags:
                     - tag: scope
                       value: performance
             - uuid: 96de907f6b3d4ea5acc7bc685be00ab6
-              name: 'Extreme VOSS: Slot {#SNMPINDEX}: Memory utilization'
+              name: 'Slot {#SNMPINDEX}: Memory utilization'
               type: DEPENDENT
               key: 'extreme.mem.util[{#SNMPINDEX}]'
               delay: '0'
@@ -1738,36 +1790,18 @@ zabbix_export:
                 - tag: slot
                   value: '{#SNMPINDEX}'
               trigger_prototypes:
-                - uuid: 9f3a112bcc7d4e8fa91c3d5870b2e441
-                  expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.CRIT}'
-                  recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)<={$MEMORY.UTIL.CRIT}-5'
-                  name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization'
-                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization (>{$MEMORY.UTIL.CRIT}%)'
-                  opdata: 'Avg 10m: {ITEM.LASTVALUE1}'
-                  priority: HIGH
-                  description: 'Average memory utilization over 10 minutes exceeds {$MEMORY.UTIL.CRIT}%. It recovers when utilization stays at least 5% below the threshold.'
-                  tags:
-                    - tag: scope
-                      value: capacity
                 - uuid: 3bce558adf854c66a04bee81229a27fa
-                  expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.WARN}'
-                  recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)<={$MEMORY.UTIL.WARN}-5'
+                  expression: 'min(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],5m)>{$MEMORY.UTIL.MAX:"{#SNMPINDEX}"}'
                   name: 'Extreme VOSS: Slot {#SNMPINDEX}: High memory utilization'
-                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: High memory utilization (>{$MEMORY.UTIL.WARN}%)'
-                  opdata: 'Avg 10m: {ITEM.LASTVALUE1}'
+                  event_name: 'Extreme VOSS: Slot {#SNMPINDEX}: High memory utilization (over {$MEMORY.UTIL.MAX:"{#SNMPINDEX}"}% for 5m)'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
                   priority: WARNING
-                  description: 'Average memory utilization over 10 minutes exceeds {$MEMORY.UTIL.WARN}%. It recovers when utilization stays at least 5% below the threshold.'
-                  dependencies:
-                    - name: 'Extreme VOSS: Slot {#SNMPINDEX}: Critical memory utilization'
-                      expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)>{$MEMORY.UTIL.CRIT}'
-                      recovery_expression: 'avg(/Extreme VOSS by SNMP/extreme.mem.util[{#SNMPINDEX}],10m)<={$MEMORY.UTIL.CRIT}-5'
+                  description: 'The memory utilization is too high. Please check the device memory usage.'
                   tags:
                     - tag: scope
                       value: capacity
             - uuid: 76e749cb45094d63a17cf359985f5a1d
-              name: 'Extreme VOSS: Slot {#SNMPINDEX}: Memory used'
+              name: 'Slot {#SNMPINDEX}: Memory used'
               type: DEPENDENT
               key: 'extreme.mem.used[{#SNMPINDEX}]'
               delay: '0'
@@ -1793,7 +1827,7 @@ zabbix_export:
                 - tag: slot
                   value: '{#SNMPINDEX}'
             - uuid: 61cd64f1fc5948ed881a76b3d9afc1ff
-              name: 'Extreme VOSS: Slot {#SNMPINDEX}: Memory free'
+              name: 'Slot {#SNMPINDEX}: Memory free'
               type: DEPENDENT
               key: 'extreme.mem.free[{#SNMPINDEX}]'
               delay: '0'
@@ -1818,6 +1852,21 @@ zabbix_export:
                   value: memory
                 - tag: slot
                   value: '{#SNMPINDEX}'
+          graph_prototypes:
+            - uuid: f7c737e447204657ad95938bf91bf336
+              name: 'Slot {#SNMPINDEX}: CPU utilization'
+              graph_items:
+                - color: 1A7C11
+                  item:
+                    host: 'Extreme VOSS by SNMP'
+                    key: 'extreme.cpu.util[{#SNMPINDEX}]'
+            - uuid: f0e307493c1c4f26a92667399a3b8b53
+              name: 'Slot {#SNMPINDEX}: Memory utilization'
+              graph_items:
+                - color: 2774A4
+                  item:
+                    host: 'Extreme VOSS by SNMP'
+                    key: 'extreme.mem.util[{#SNMPINDEX}]'
           master_item:
             key: extreme.khi.slot.walk
           preprocessing:
@@ -1836,14 +1885,14 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 36320fe027cc4a26ab3cfe54331fabf8
-          name: 'Extreme VOSS: Temperature sensor discovery'
+          name: 'Temperature sensor discovery'
           type: DEPENDENT
           key: extreme.temp.discovery
           delay: '0'
           description: 'Discovering temperature sensors from `RAPID-CITY::rcVossSystemTemperatureTable`.'
           item_prototypes:
             - uuid: 2f4e0c68dd174e8ba47f55eeed1716b5
-              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}'
+              name: 'Temperature {#SENSOR.NAME}'
               type: DEPENDENT
               key: 'extreme.temp.value[{#SNMPINDEX}]'
               delay: '0'
@@ -1891,7 +1940,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 3bca88be317c4126becf81e19238fb26
-              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}: Warning threshold'
+              name: 'Temperature {#SENSOR.NAME}: Warning threshold'
               type: DEPENDENT
               key: 'extreme.temp.warn[{#SNMPINDEX}]'
               delay: '0'
@@ -1915,7 +1964,7 @@ zabbix_export:
                 - tag: component
                   value: temperature
             - uuid: 14a0ecaea588430a8c71639715f664e9
-              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}: Critical threshold'
+              name: 'Temperature {#SENSOR.NAME}: Critical threshold'
               type: DEPENDENT
               key: 'extreme.temp.crit[{#SNMPINDEX}]'
               delay: '0'
@@ -1939,7 +1988,7 @@ zabbix_export:
                 - tag: component
                   value: temperature
             - uuid: 876220f4c00c4512af0edb5d10dfa081
-              name: 'Extreme VOSS: Temperature {#SENSOR.NAME}: Status'
+              name: 'Temperature {#SENSOR.NAME}: Status'
               type: DEPENDENT
               key: 'extreme.temp.status[{#SNMPINDEX}]'
               delay: '0'
@@ -1972,7 +2021,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 9da1e81e4170448884cc8354d228a9e9
-          name: 'Extreme VOSS: Fan discovery'
+          name: 'Fan discovery'
           type: DEPENDENT
           key: extreme.fan.discovery
           delay: '0'
@@ -1981,7 +2030,7 @@ zabbix_export:
             Preprocessing excludes notPresent(4). Status is omitted from LLD JSON to avoid rediscovery on up/down.
           item_prototypes:
             - uuid: 1e4bc4ed9ee24bd2ac5534f9952baa43
-              name: 'Extreme VOSS: Fan {#FAN.NAME}: Status'
+              name: 'Fan {#FAN.NAME}: Status'
               type: DEPENDENT
               key: 'extreme.fan.status[{#SNMPINDEX}]'
               delay: '0'
@@ -2015,7 +2064,7 @@ zabbix_export:
                     - tag: scope
                       value: availability
             - uuid: 75780453ff2d47a3886eccb762b26b2d
-              name: 'Extreme VOSS: Fan {#FAN.NAME}: Speed'
+              name: 'Fan {#FAN.NAME}: Speed'
               type: DEPENDENT
               key: 'extreme.fan.speed[{#SNMPINDEX}]'
               delay: '0'
@@ -2040,7 +2089,7 @@ zabbix_export:
                 - tag: component
                   value: fan
             - uuid: 27607af0f12142c48f6fdb8d73cdd661
-              name: 'Extreme VOSS: Fan {#FAN.NAME}: RPM'
+              name: 'Fan {#FAN.NAME}: RPM'
               type: DEPENDENT
               key: 'extreme.fan.rpm[{#SNMPINDEX}]'
               delay: '0'
@@ -2086,7 +2135,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: ccbedd5c643846dc9f71563fbe8586e5
-          name: 'Extreme VOSS: Power supply discovery'
+          name: 'Power supply discovery'
           type: DEPENDENT
           key: extreme.psu.discovery
           delay: '0'
@@ -2105,7 +2154,7 @@ zabbix_export:
             Filter uses And (not And/Or) so MATCHES and NOT_MATCHES both apply; default excludes empty(2).
           item_prototypes:
             - uuid: b3beaf38fe5c485a8c79f79c65b45630
-              name: 'Extreme VOSS: PSU {#SNMPINDEX}: Status'
+              name: 'PSU {#SNMPINDEX}: Status'
               type: DEPENDENT
               key: 'extreme.psu.status[{#SNMPINDEX}]'
               delay: '0'
@@ -2150,7 +2199,7 @@ zabbix_export:
               parameters:
                 - 1h
         - uuid: 454935f5f6fa4eb5990063303f774db1
-          name: 'Extreme VOSS: Network interfaces discovery'
+          name: 'Network interfaces discovery'
           type: DEPENDENT
           key: net.if.discovery
           delay: '0'
@@ -2489,37 +2538,16 @@ zabbix_export:
                       value: availability
           trigger_prototypes:
             - uuid: ec3ac4fb300845919da40c656296e3b3
-              expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.WARN:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.WARN:"{#IFNAME}"}'
+              expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],15m)>{$IF.UTIL.MAX:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],15m)>{$IF.UTIL.MAX:"{#IFNAME}"}'
               recovery_mode: RECOVERY_EXPRESSION
-              recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)<={$IF.UTIL.WARN:"{#IFNAME}"}-5 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)<={$IF.UTIL.WARN:"{#IFNAME}"}-5'
-              name: 'Interface {#IFNAME}({#IFALIAS}): High bandwidth utilization'
-              event_name: 'Interface {#IFNAME}({#IFALIAS}): High bandwidth utilization (>{$IF.UTIL.WARN:"{#IFNAME}"}%)'
+              recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],15m)<={$IF.UTIL.MAX:"{#IFNAME}"}-3 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],15m)<={$IF.UTIL.MAX:"{#IFNAME}"}-3'
+              name: 'Interface {#IFNAME}({#IFALIAS}): High bandwidth usage'
+              event_name: 'Interface {#IFNAME}({#IFALIAS}): High bandwidth usage (>{$IF.UTIL.MAX:"{#IFNAME}"}%)'
               opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE2}'
               priority: WARNING
               description: |
-                Inbound or outbound utilization over 5 minutes exceeds {$IF.UTIL.WARN:"{#IFNAME}"}%.
-                It recovers when both directions stay at least 5% below the threshold.
-              dependencies:
-                - name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization'
-                  expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"}'
-                  recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5'
-                - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
-                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
-                  recovery_expression: 'last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
-              tags:
-                - tag: scope
-                  value: performance
-            - uuid: 6f747c76da5341039650c1647e533650
-              expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"} or avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)>{$IF.UTIL.CRIT:"{#IFNAME}"}'
-              recovery_mode: RECOVERY_EXPRESSION
-              recovery_expression: 'avg(/Extreme VOSS by SNMP/net.if.in.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5 and avg(/Extreme VOSS by SNMP/net.if.out.util[{#IFNAME}],5m)<={$IF.UTIL.CRIT:"{#IFNAME}"}-5'
-              name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization'
-              event_name: 'Interface {#IFNAME}({#IFALIAS}): Critical bandwidth utilization (>{$IF.UTIL.CRIT:"{#IFNAME}"}%)'
-              opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE2}'
-              priority: HIGH
-              description: |
-                Inbound or outbound utilization over 5 minutes exceeds {$IF.UTIL.CRIT:"{#IFNAME}"}%.
-                It recovers when both directions stay at least 5% below the threshold.
+                The utilization of the network interface is close to its estimated maximum bandwidth.
+                It recovers when both directions stay at least 3% below the {$IF.UTIL.MAX:"{#IFNAME}"} threshold.
               dependencies:
                 - name: 'Interface {#IFNAME}({#IFALIAS}): Link down'
                   expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}])=2 and (last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#1)<>last(/Extreme VOSS by SNMP/net.if.status[{#IFNAME}],#2))'
@@ -2598,10 +2626,7 @@ zabbix_export:
       macros:
         - macro: '{$CPU.UTIL.CRIT}'
           value: '90'
-          description: 'Critical threshold of CPU utilization in % (5-minute average).'
-        - macro: '{$CPU.UTIL.WARN}'
-          value: '80'
-          description: 'Warning threshold of CPU utilization in % (5-minute average).'
+          description: 'Critical threshold of CPU utilization in %. Can be used with slot index as context.'
         - macro: '{$EAPOLCONTROL}'
           value: '1'
           description: 'EAPOL / 802.1X triggers fire only where the context macro equals "1". Use {$EAPOLCONTROL:"{#SNMPINDEX}"}=0 to ignore a port.'
@@ -2614,24 +2639,18 @@ zabbix_export:
         - macro: '{$IF.ERRORS.WARN}'
           value: '2'
           description: 'Warning threshold of interface error packet rate. Can be used with interface name as context.'
-        - macro: '{$IF.UTIL.CRIT}'
-          value: '95'
-          description: 'Critical threshold of interface bandwidth utilization in %. Can be used with interface name as context.'
-        - macro: '{$IF.UTIL.WARN}'
+        - macro: '{$IF.UTIL.MAX}'
           value: '90'
-          description: 'Warning threshold of interface bandwidth utilization in %. Can be used with interface name as context.'
+          description: 'Threshold of interface bandwidth utilization in %. Can be used with interface name as context.'
         - macro: '{$IFCONTROL}'
           value: '1'
           description: 'Link status trigger will be fired only for interfaces where the context macro equals "1".'
         - macro: '{$ISISCONTROL}'
           value: '1'
           description: 'IS-IS circuit triggers fire only where the context macro equals "1". Use {$ISISCONTROL:"{#SNMPINDEX}"}=0 to ignore a circuit.'
-        - macro: '{$MEMORY.UTIL.CRIT}'
+        - macro: '{$MEMORY.UTIL.MAX}'
           value: '90'
-          description: 'Critical threshold of memory utilization in % (10-minute average).'
-        - macro: '{$MEMORY.UTIL.WARN}'
-          value: '80'
-          description: 'Warning threshold of memory utilization in % (10-minute average).'
+          description: 'Threshold of memory utilization in %. Can be used with slot index as context.'
         - macro: '{$MLTCONTROL}'
           value: '1'
           description: 'LACP aggregation-down trigger fires only for MLTs where the context macro equals "1".'
@@ -2645,13 +2664,13 @@ zabbix_export:
           value: .*
           description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
         - macro: '{$NET.IF.IFALIAS.NOT_MATCHES}'
-          value: CHANGE_IF
+          value: CHANGE_IF_NEEDED
           description: 'Filters out interfaces with matching ifAlias. Used in network interface discovery.'
         - macro: '{$NET.IF.IFDESCR.MATCHES}'
           value: .*
           description: 'This macro is used in network interface discovery. Can be overridden on the host or linked template level.'
         - macro: '{$NET.IF.IFDESCR.NOT_MATCHES}'
-          value: CHANGE_IF
+          value: CHANGE_IF_NEEDED
           description: 'Filters out interfaces with matching ifDescr. Used in network interface discovery.'
         - macro: '{$NET.IF.IFNAME.MATCHES}'
           value: .*
@@ -2666,10 +2685,10 @@ zabbix_export:
           value: '^6$'
           description: 'Ignore notPresent(6) operational status.'
         - macro: '{$NET.IF.IFTYPE.MATCHES}'
-          value: '^(6|161)$'
-          description: 'Discover ethernetCsmacd(6) and ieee8023adLag(161) by default. Set to .* for all types.'
+          value: .*
+          description: 'This macro is used in network interface discovery. Set to ^(6|161)$ to limit to ethernetCsmacd and ieee8023adLag.'
         - macro: '{$NET.IF.IFTYPE.NOT_MATCHES}'
-          value: CHANGE_IF
+          value: CHANGE_IF_NEEDED
           description: 'Filters out interfaces by ifType. Used in network interface discovery.'
         - macro: '{$NTP.REACHABLE.OK}'
           value: Reachable
@@ -2692,6 +2711,61 @@ zabbix_export:
         - macro: '{$SNMP.TIMEOUT}'
           value: 5m
           description: 'Time without successful SNMP checks before the SNMP availability trigger fires.'
+      dashboards:
+        - uuid: e54ae3dd8ff0463aab4174d4a8f08279
+          name: Resources
+          pages:
+            - widgets:
+                - type: graphprototype
+                  width: '72'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid.0
+                      value:
+                        host: 'Extreme VOSS by SNMP'
+                        name: 'Slot {#SNMPINDEX}: CPU utilization'
+                    - type: STRING
+                      name: reference
+                      value: AAAAA
+                - type: graphprototype
+                  'y': '5'
+                  width: '72'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid.0
+                      value:
+                        host: 'Extreme VOSS by SNMP'
+                        name: 'Slot {#SNMPINDEX}: Memory utilization'
+                    - type: STRING
+                      name: reference
+                      value: AAAAB
+        - uuid: a3fbf89833984f7085c682c153c1531b
+          name: 'Network interfaces'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  width: '72'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid.0
+                      value:
+                        host: 'Extreme VOSS by SNMP'
+                        name: 'Interface {#IFNAME}({#IFALIAS}): Network traffic'
+                    - type: STRING
+                      name: reference
+                      value: AAAAC
       valuemaps:
         - uuid: daaa8a894f074452b003d015f3140c17
           name: 'IF-MIB::ifOperStatus'
