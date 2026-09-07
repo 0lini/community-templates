@@ -31,14 +31,15 @@ Uses master `walk[]` / `get[]` items with dependent discovery and metrics, align
 
 ## Setup
 
-1. Import `template_extreme_switch_voss.yaml` (**Configuration → Templates → Import**).
+1. Import `template_extreme_voss.yaml` (**Configuration → Templates → Import**).
 2. Assign **Extreme VOSS by SNMP** to the host.
 3. Configure an SNMP interface (IP, port 161, v2c or v3 credentials).
 4. To ignore link-down on a specific interface, set `{$IFCONTROL:"ifName"}=0` on the host.
 5. To ignore LACP-down on a specific MLT, set `{$MLTCONTROL:"mltName"}=0` on the host.
 6. To ignore IS-IS circuit problems, set `{$ISISCONTROL:"circuitIndex"}=0` on the host.
 7. To ignore EAPOL issues on a port, set `{$EAPOLCONTROL:"ifIndex"}=0` (context is `{#SNMPINDEX}`).
-8. Tune other macros as needed (including `{$NTP.SYNC.PROBLEM.MATCHES}` / `{$NTP.REACHABLE.OK}` if device status strings differ).
+8. To raise a per-slot CPU threshold, set `{$CPU.UTIL.CRIT:"slotIndex"}` on the host (same pattern for `{$MEMORY.UTIL.MAX:"slotIndex"}`).
+9. Tune other macros as needed (including `{$NTP.SYNC.PROBLEM.MATCHES}` / `{$NTP.REACHABLE.OK}` if device status strings differ).
 
 ---
 
@@ -46,9 +47,9 @@ Uses master `walk[]` / `get[]` items with dependent discovery and metrics, align
 
 | Macro | Default | Description |
 |---|---|---|
-| `{$CPU.UTIL.CRIT}` / `{$CPU.UTIL.WARN}` | `90` / `80` | CPU % thresholds (5m avg) |
-| `{$MEMORY.UTIL.CRIT}` / `{$MEMORY.UTIL.WARN}` | `90` / `80` | Memory % thresholds (10m avg) |
-| `{$IF.UTIL.CRIT}` / `{$IF.UTIL.WARN}` | `95` / `90` | Interface bandwidth % (context: `"{#IFNAME}"`) |
+| `{$CPU.UTIL.CRIT}` | `90` | CPU % (5m min); context `"{#SNMPINDEX}"` |
+| `{$MEMORY.UTIL.MAX}` | `90` | Memory % (5m min); context `"{#SNMPINDEX}"` |
+| `{$IF.UTIL.MAX}` | `90` | Interface bandwidth % (15m avg); context `"{#IFNAME}"` |
 | `{$IF.ERRORS.WARN}` | `2` | Interface error rate eps (context supported) |
 | `{$IFCONTROL}` | `1` | Link-down fires only where context equals `1` (`{$IFCONTROL:"ifName"}=0` to ignore) |
 | `{$MLTCONTROL}` | `1` | LACP-down fires only where context equals `1` |
@@ -63,7 +64,8 @@ Uses master `walk[]` / `get[]` items with dependent discovery and metrics, align
 | `{$SNMP.TIMEOUT}` | `5m` | SNMP availability window |
 | `{$NET.IF.IFNAME.NOT_MATCHES}` | Mgmt / loopback regex | Skip Mgmt / loopback-style names |
 | `{$NET.IF.IFADMINSTATUS.NOT_MATCHES}` | `^2$` | Skip admin-down |
-| `{$NET.IF.IFTYPE.MATCHES}` | `^(6\|161)$` | ethernetCsmacd + LAG; set `.*` for all |
+| `{$NET.IF.IFTYPE.MATCHES}` | `.*` | All ifTypes; set `^(6\|161)$` for ethernetCsmacd + LAG only |
+| `{$NET.IF.*.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Official placeholder; override to exclude extra interfaces |
 | `{$PSU.STATUS.NOT_MATCHES}` | `^2$` | Skip empty PSU slots |
 
 Additional `{$NET.IF.*.MATCHES}` / `NOT_MATCHES` macros follow the official filter pattern.
@@ -97,7 +99,7 @@ Additional `{$NET.IF.*.MATCHES}` / `NOT_MATCHES` macros follow the official filt
 
 - ICMP unavailable / high loss / high RTT
 - No SNMP data collection
-- Slot critical/high CPU and memory
+- Slot high CPU / high memory (`min` 5m; LLD context macros)
 - Temperature at device warn/crit thresholds
 - Fan / PSU down
 - vIST session down (only on discovered/configured vIST)
@@ -110,8 +112,10 @@ Additional `{$NET.IF.*.MATCHES}` / `NOT_MATCHES` macros follow the official filt
 - Auto-Sense NNI auth fail / NNI loop
 - EAPOL held / stuck authenticating / backend fail-timeout (`{$EAPOLCONTROL}`)
 - RADIUS pending stuck / high retries (`{$RADIUSCONTROL}`)
-- Interface link down (`{$IFCONTROL}`), util, errors (with hysteresis)
+- Interface link down (`{$IFCONTROL}`), high bandwidth usage, errors (with hysteresis)
 - Device restarted (uptime < 10m)
+
+Template dashboards: **Resources** (per-slot CPU/memory graph prototypes) and **Network interfaces**.
 
 ---
 
@@ -122,5 +126,6 @@ Additional `{$NET.IF.*.MATCHES}` / `NOT_MATCHES` macros follow the official filt
 - **Platforms**: Extreme VOSS / Fabric Engine
 - **MIBs**: RAPID-CITY, ENTITY-MIB, IF-MIB, IEEE8021-PAE-MIB, SNMPv2-MIB
 - **Author**: Jon McLaughlin
+- **Version**: 1.1.0
 
-**Note:** Macro names use dotted style (`{$CPU.UTIL.CRIT}` etc.). Re-apply host overrides after import if you used older `{$CPU_HIGH}`-style macros.
+**Note:** Item names follow official style (no vendor prefix). Triggers keep the `Extreme VOSS:` prefix. Re-apply host overrides after import if you used `{$CPU.UTIL.WARN}`, `{$MEMORY.UTIL.CRIT}` / `{$MEMORY.UTIL.WARN}`, or `{$IF.UTIL.CRIT}` / `{$IF.UTIL.WARN}` — those were replaced by `{$CPU.UTIL.CRIT}`, `{$MEMORY.UTIL.MAX}`, and `{$IF.UTIL.MAX}`.
