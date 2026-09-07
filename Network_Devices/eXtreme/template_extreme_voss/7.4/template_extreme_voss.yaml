@@ -29,7 +29,7 @@ zabbix_export:
 
         Version: 1.1.0
         Changelog:
-        - 1.1.0: Align with official Zabbix template conventions (item names, LLD macro context, single-threshold triggers, discovery defaults).
+        - 1.1.0: Align with official Zabbix template conventions; label NTP peers by IP when hostname is Unknown.
         - 1.0.0: Initial Zabbix 7.4 template.
 
         Author: Jon McLaughlin
@@ -444,7 +444,10 @@ zabbix_export:
           value_type: TEXT
           description: |
             MIB: RAPID-CITY
-            Scanning of NTPv4 server table (enable, synchronized, reachable, hostname).
+            Scanning of `RAPID-CITY::rcNtpv4ServerTable`
+            (enable, synchronized, reachable, hostname).
+            Hostname is often `Unknown` when the server is configured by IP;
+            discovery then labels the peer from the InetAddress index.
           tags:
             - tag: component
               value: raw
@@ -1302,7 +1305,12 @@ zabbix_export:
               - macro: '{#NTP.ENABLE}'
                 value: '^1$'
                 formulaid: A
-          description: 'Discovering enabled NTPv4 servers from RAPID-CITY.'
+          description: |
+            Discovering enabled NTPv4 servers from `RAPID-CITY::rcNtpv4ServerTable`.
+            `{#NTP.HOSTNAME}` is `rcNtpv4ServerHostname` when it is a real name;
+            otherwise the IPv4/IPv6/DNS address from the table index
+            (`rcNtpv4ServerAddressType` + `rcNtpv4ServerAddress`).
+            VOSS typically returns hostname `Unknown` for IP-configured peers.
           item_prototypes:
             - uuid: 779a1ae23d93435e88ac88e4e4e11478
               name: 'NTP {#NTP.HOSTNAME}: Sync status'
@@ -1393,11 +1401,60 @@ zabbix_export:
             - type: JAVASCRIPT
               parameters:
                 - |
+                  function formatIpv6(octets) {
+                    var groups = [];
+                    for (var i = 0; i < 16; i += 2) {
+                      groups.push(((octets[i] << 8) | octets[i + 1]).toString(16));
+                    }
+                    return groups.join(':');
+                  }
+                  function formatAddr(type, octets) {
+                    if ((type === 1 || type === 3) && octets.length >= 4) {
+                      return octets.slice(0, 4).join('.');
+                    }
+                    if ((type === 2 || type === 4) && octets.length >= 16) {
+                      return formatIpv6(octets.slice(0, 16));
+                    }
+                    if (type === 16 && octets.length) {
+                      var s = '';
+                      for (var i = 0; i < octets.length; i++) {
+                        if (octets[i] >= 32 && octets[i] < 127) {
+                          s += String.fromCharCode(octets[i]);
+                        }
+                      }
+                      return s || null;
+                    }
+                    return null;
+                  }
+                  function parseInetIndex(idx) {
+                    var parts = String(idx).split('.');
+                    var type = parseInt(parts[0], 10);
+                    if (isNaN(type) || parts.length < 2) {
+                      return idx;
+                    }
+                    var len = parseInt(parts[1], 10);
+                    if (!isNaN(len) && len >= 0 && parts.length >= 2 + len) {
+                      var octets = parts.slice(2, 2 + len).map(function (x) { return parseInt(x, 10); });
+                      var formatted = formatAddr(type, octets);
+                      if (formatted) {
+                        return formatted;
+                      }
+                    }
+                    if (type === 1 && parts.length >= 5) {
+                      return parts.slice(1, 5).join('.');
+                    }
+                    if (type === 2 && parts.length >= 17) {
+                      return formatIpv6(parts.slice(1, 17).map(function (x) { return parseInt(x, 10); }));
+                    }
+                    return idx;
+                  }
                   var rows = JSON.parse(value);
                   return JSON.stringify(rows.map(function (r) {
-                    if (!r['{#NTP.HOSTNAME}']) {
-                      r['{#NTP.HOSTNAME}'] = r['{#SNMPINDEX}'];
+                    var host = String(r['{#NTP.HOSTNAME}'] || '').replace(/^\s+|\s+$/g, '');
+                    if (!host || /^(unknown|-|n\/a)$/i.test(host)) {
+                      host = parseInetIndex(r['{#SNMPINDEX}']);
                     }
+                    r['{#NTP.HOSTNAME}'] = host;
                     return r;
                   }));
             - type: DISCARD_UNCHANGED_HEARTBEAT

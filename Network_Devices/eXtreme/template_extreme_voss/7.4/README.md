@@ -80,7 +80,7 @@ Additional `{$NET.IF.*.MATCHES}` / `NOT_MATCHES` macros follow the official filt
 | Classic IST | `extreme.ist.discovery` | Only if `rcMltIstSessionEnable` = enable(1) |
 | MLT / LACP | `extreme.mlt.discovery` | Only if `rcMltEnable` = true(1) |
 | IS-IS circuits | `extreme.isis.circuit.discovery` | All `rcIsisCircuitTable` entries |
-| NTP servers | `extreme.ntp.discovery` | Only if `rcNtpv4ServerEnable` = true(1) |
+| NTP servers | `extreme.ntp.discovery` | Enabled servers; label is hostname, or IP if hostname is `Unknown` |
 | SLPP Guard | `extreme.slpp.guard.discovery` | Only if `rcSlppPortGuardEnable` = true |
 | BPDU Guard | `extreme.bpdu.guard.discovery` | Only if `rcPortBpduGuardAdminEnabled` = true |
 | Auto-Sense | `extreme.autosense.discovery` | Only if `rcPortAutoSense` = enable(2) |
